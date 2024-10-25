@@ -6,7 +6,9 @@ WORKDIR /app
 
 
 # Setup Script
-RUN setup_docker.sh
+RUN git clone --depth 1 --branch main https://github.com/adriwitek/pdf2txt
+WORKDIR /app/pdf2txt/Docker
+RUN bash setup_docker.sh
 
 
 ENV TESSDATA_PREFIX /usr/share/tesseract-ocr/4.00/tessdata/

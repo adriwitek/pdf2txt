@@ -2,7 +2,7 @@
 
 
 # Macros
-REPO_PDF2TXT_URL=https://github.com/carlosep93/pdf2txt.git
+REPO_PDF2TXT_URL=https://github.com/adriwitek/pdf2txt
 
 
 
