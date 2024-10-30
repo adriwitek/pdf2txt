@@ -6,9 +6,16 @@ WORKDIR /app
 
 
 # Setup Script
+## DELTE THIS IF FINALLY I DONT USE THE .SH
+RUN apt-get update && apt-get install -y git git-lfs wget
+
+
 RUN git clone --depth 1 --branch main https://github.com/adriwitek/pdf2txt
 WORKDIR /app/pdf2txt/Docker
-RUN bash setup_docker.sh
+RUN chmod +x setup_docker.sh && bash setup_docker.sh
+
+
+
 
 
 ENV TESSDATA_PREFIX /usr/share/tesseract-ocr/4.00/tessdata/
