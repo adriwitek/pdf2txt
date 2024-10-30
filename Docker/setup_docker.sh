@@ -48,6 +48,7 @@ python3 -m pip install --use-pep517  --no-cache-dir -r requirements.txt
 
 
 # Model downloading
+mkdir /app/pdf2txt/pipeline/models/nextprocurement_pdfutils/
 cd /app/pdf2txt/pipeline/models/nextprocurement_pdfutils/
 git clone --depth 1 https://huggingface.co/BSC-LT/NextProcurement_pdfutils /app/pdf2txt/pipeline/models/nextprocurement_pdfutils/
 
