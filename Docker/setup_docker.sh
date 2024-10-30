@@ -15,7 +15,7 @@ echo 'Starting docker setup script....'
 apt-get update && apt-get install -y software-properties-common 
 add-apt-repository ppa:deadsnakes/ppa -y && apt-get update && apt-get install -y python3.10 python3-pip 
 python3 -m pip install --upgrade  pip  --no-cache-dir
-apt-get update && apt-get install -y python-is-python3 git git-lfs wget cmake libfreetype6-dev libfontconfig-dev libnss3-dev libjpeg-dev libopenjp2-7 libopenjp2-7-dev ffmpeg libsm6 libxext6 libleptonica-dev tesseract-ocr libtesseract-dev
+apt-get update && apt-get install -y python-is-python3 git git-lfs wget cmake libfreetype6-dev libfontconfig-dev libnss3-dev libjpeg-dev libopenjp2-7 libopenjp2-7-dev ffmpeg libsm6 libxext6 libleptonica-dev tesseract-ocr libtesseract-dev libpoppler-cpp-dev
 
 
 
