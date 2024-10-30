@@ -18,8 +18,7 @@ python3 -m pip install --upgrade  pip  --no-cache-dir
 apt-get update && apt-get install -y python-is-python3 git git-lfs wget cmake libfreetype6-dev libfontconfig-dev libnss3-dev libjpeg-dev libopenjp2-7 libopenjp2-7-dev ffmpeg libsm6 libxext6 libleptonica-dev tesseract-ocr libtesseract-dev libpoppler-cpp-dev
 
 
-
-
+# Poppler
 git clone https://gitlab.freedesktop.org/poppler/poppler.git
 # git checkout poppler-0.89.0
 cd /app/poppler 
@@ -29,8 +28,10 @@ cmake -DCMAKE_BUILD_TYPE=Release  -DCMAKE_INSTALL_PREFIX:PATH=/usr/local     -DE
 make 
 make install
 cd /app
+apt-get update && apt-get install poppler-utils
 
 
+# Tessdata
 wget  https://github.com/tesseract-ocr/tessdata/raw/main/spa.traineddata -P /usr/share/tesseract-ocr/4.00/tessdata 
 wget  https://github.com/tesseract-ocr/tessdata/raw/main/cat.traineddata -P /usr/share/tesseract-ocr/4.00/tessdata
 wget  https://github.com/tesseract-ocr/tessdata/raw/main/eus.traineddata -P /usr/share/tesseract-ocr/4.00/tessdata
@@ -40,7 +41,6 @@ wget  https://github.com/tesseract-ocr/tessdata/raw/main/glg.traineddata -P /usr
 
 
 # pdf2txt installation
-
 cd /app
 git clone --depth 1 --branch main $REPO_PDF2TXT_URL
 cd /app/pdf2txt
@@ -56,7 +56,6 @@ git clone --depth 1 https://huggingface.co/BSC-LT/NextProcurement_pdfutils /app/
 
 
 # MT Model downloading
-
 mkdir /app/pdf2txt/pipeline/models/nllb
 cd /app/pdf2txt/pipeline/models/nllb
 GIT_LFS_SKIP_SMUDGE=1 git clone https://huggingface.co/facebook/nllb-200-distilled-600M
@@ -73,21 +72,16 @@ ct2-transformers-converter --model nllb-200-distilled-600M --output_dir nllb-ct2
 
 
 
-
-
-
 # Lang identification Model downloading
 mkdir /app/pdf2txt/pipeline/models/language_identification
-wget  https://dl.fbaipublicfiles.com/fasttext/supervised-models/lid.176.bin -P /app/pdf2txt/pipeline/models/language_identification -O lid.176.bin
+wget  https://dl.fbaipublicfiles.com/fasttext/supervised-models/lid.176.bin -P /app/pdf2txt/pipeline/models/language_identification 
 
 
 
 
 
 # Cleaning
-
 rm -rf /app/poppler/ && rm -rf /var/cache/apt/archives/
-
 
 
 

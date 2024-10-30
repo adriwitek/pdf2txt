@@ -23,7 +23,8 @@ DEVICE = -1
 
 
 # NOT CONFIGURABLE MACROS
-PDF2TXT_CLASSIFIER_MODEL = 'https://huggingface.co/BSC-LT/NextProcurement_pdfutils'
+#PDF2TXT_CLASSIFIER_MODEL = 'https://huggingface.co/BSC-LT/NextProcurement_pdfutils'
+PDF2TXT_CLASSIFIER_MODEL = '/app/pdf2txt/pipeline/models/nextprocurement_pdfutils'
 MAX_TOKENIZER_LENGTH=512
 
 
@@ -46,7 +47,7 @@ def list_dir(directory):
 def _get_txt_from_pdf_aux(pdf_path, pipe):
     '''Processes and saves each pdf file'''
 
-    all_paragraphs = get_paragraphs_from_pdf(pdf_path)
+    all_paragraphs = get_paragraphs_from_pdf(os.path.join(pdf_path))
     for page_number,  paragraphs_in_page in enumerate(all_paragraphs):
         buffer_txt = []
         #f.write('## PAGE:'+ str(page_number) + '##\n\n')
@@ -80,7 +81,7 @@ def get_txt_from_pdf (pdf_path, pipe):
           txt =  _get_txt_from_pdf_aux(pdf_path, pipe)
           return txt
         except Exception as e:
-            err_msg = "ERROR: An error ocurred parsing the document called: " + filename + '. \n\t' + str(e)
+            err_msg = "ERROR: An error ocurred parsing the document: " + filename + '. \n\t' + str(e)
             #raise  Exception( err_msg)
             print(err_msg)
             return None
@@ -99,6 +100,9 @@ def process_pdf(pdf_path, pipe):
 
     # Txt processing
     doc_clean_txt = get_txt_from_pdf (pdf_path, pipe)
+    if(doc_clean_txt) is None: # Skipping doc
+        return
+
     doc_xml_txt = process_doc(doc_clean_txt)
 
     # Lang detection
@@ -110,7 +114,7 @@ def process_pdf(pdf_path, pipe):
 
 
     # Debuggg
-    print(f'New doc! (lang{lang})')
+    print(f'New doc! (lang:{lang})')
     print(f'-------------------TEXT:------')
     print(doc_clean_txt)
     print(f'-------------------XML:------')
@@ -187,7 +191,7 @@ def _parse_args():
         err_msg = "ERROR: --output path must be provided!"
         raise  Exception( err_msg )
 
-
+    return args
 
 
 def main(*args, **kwargs):
@@ -200,8 +204,8 @@ def main(*args, **kwargs):
 
     # Load model and pipeline
     os.environ["TOKENIZERS_PARALLELISM"] = "false"
-    tokenizer = AutoTokenizer.from_pretrained(str(args.model))
-    model = AutoModelForSequenceClassification.from_pretrained(str(args.model))
+    tokenizer = AutoTokenizer.from_pretrained(str(PDF2TXT_CLASSIFIER_MODEL))
+    model = AutoModelForSequenceClassification.from_pretrained(str(PDF2TXT_CLASSIFIER_MODEL))
     #pipe = pipeline("text-classification", model=model, tokenizer=tokenizer)
     pipe = pipeline("text-classification", model=model, tokenizer=tokenizer, device = DEVICE)
 
@@ -209,9 +213,10 @@ def main(*args, **kwargs):
 
     list_of_pdfs = list_dir(args.input)
 
+    
 
     # Process list of pdfs
-    [ process_pdf(pdf_path, pipe) for pdf_path in args.list_of_pdfs]
+    [ process_pdf(pdf_path, pipe) for pdf_path in list_of_pdfs]
 
 
     ##### TODO I SHOULD HANDLE IT SO IT GIVES EVERYTHING I NEEEEEEEEED

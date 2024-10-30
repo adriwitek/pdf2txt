@@ -4,7 +4,7 @@ import fasttext
 import sys
 
 
-FASTTEXT_MODEL_PATH = './models/language_identification/lid.176.bin'
+FASTTEXT_MODEL_PATH = '/app/pdf2txt/pipeline/models/language_identification/lid.176.bin'
 
 
 
