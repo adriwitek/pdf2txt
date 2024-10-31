@@ -14,3 +14,4 @@ poppler-utils==0.1.0
 python-poppler==0.3.0
 pandas==2.2.3
 fasttext==0.9.3
+pyarrow==18.0.0

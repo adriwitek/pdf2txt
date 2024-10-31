@@ -214,10 +214,7 @@ def _create_parquet_file(slice_list_of_procurements, list_index, pipe,output_fol
 
 
     # Get results of each procuremetn
-    # [ _process_procurement_folder(ntp) for ntp in list_of_files]
-
-    unfolded_list =  []
-    [ unfolded_list.extend(process_pdf(pdt_path, pipe)) for pdt_path in slice_list_of_procurements]
+    info = [process_pdf(pdt_path, pipe) for pdt_path in slice_list_of_procurements]
  
  
     # Parquet generation
@@ -226,7 +223,7 @@ def _create_parquet_file(slice_list_of_procurements, list_index, pipe,output_fol
                     'content': doc_xml_txt ,
                     'alternative_lang': lang ,
                     'translated_content': tranlated_doc_xml_txt,
-                    } for (ntp_id, original_pdf_name , doc_xml_txt , lang, tranlated_doc_xml_txt) in  unfolded_list
+                    } for (ntp_id, original_pdf_name , doc_xml_txt , lang, tranlated_doc_xml_txt) in  info 
                 ]
     df = pd.DataFrame(df_content)
     n_of_docs_in_slice = df.shape[0]
