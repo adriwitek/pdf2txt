@@ -10,6 +10,7 @@ import sys
 import os
 import logging
 import shutil
+import re
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, pipeline
 
 
@@ -18,14 +19,31 @@ from libs.txt2xml_creator import *
 from libs.lang_indentificator import *
 
 
-# MACROS 
+
+###################################
+# CONFIGURABLE MACROS 
+###################################
+LIMIT_N_PROCUREMENTS_PER_PARQUET = 100000
+
+
 DEVICE = -1
 
 
+
+###################################
 # NOT CONFIGURABLE MACROS
+###################################
+
+# Classifier Model
 #PDF2TXT_CLASSIFIER_MODEL = 'https://huggingface.co/BSC-LT/NextProcurement_pdfutils'
 PDF2TXT_CLASSIFIER_MODEL = '/app/pdf2txt/pipeline/models/nextprocurement_pdfutils'
 MAX_TOKENIZER_LENGTH=512
+
+# Translation Model
+TRANSLATION_MODEL_DIR='/app/pdf2txt/pipeline/models/nllb/nllb-200-distilled-600M/'
+
+NTP_PATTERN = r"ntp\d+_.*\.pdf"
+
 
 
 
@@ -33,7 +51,6 @@ def list_dir(directory):
     ''' Returns a list with pdf files in the given directory
     
     '''
-
     logging.info(f'Listing folder in  directory {directory} ...')
     dis_list = [ f'{directory}/{i}'  for i in  os.listdir(directory) if  i.endswith(".pdf")]
     logging.info(f'DONE! Listed {len(dis_list)} pdfs.')
@@ -91,7 +108,21 @@ def get_txt_from_pdf (pdf_path, pipe):
 
 
 
+def _extract_proc_ntp_id(pdf_name):
+    '''Tries to extract ntpXXX id from pdf name
+        Returns:
+            nptXXX string-id, None if not possible to find
+    '''
 
+
+    if (re.match(NTP_PATTERN, pdf_name) is not None ):
+        try:
+            id= pdf_name.split('_')[0]
+            return id
+        except:
+            return None
+    else: 
+        return None
 
 
 def process_pdf(pdf_path, pipe):
@@ -103,22 +134,34 @@ def process_pdf(pdf_path, pipe):
     if(doc_clean_txt) is None: # Skipping doc
         return
 
+    # XML parsing
     doc_xml_txt = process_doc(doc_clean_txt)
 
     # Lang detection
     lang = get_language(doc_clean_txt)
 
+    # Pdf basename
+    original_pdf_name = os.path.basename(pdf_path)
 
+    # Proc ID  (if can be located)
+    ntp_id = _extract_proc_ntp_id(original_pdf_name)
 
 
 
 
     # Debuggg
-    print(f'New doc! (lang:{lang})')
-    print(f'-------------------TEXT:------')
-    print(doc_clean_txt)
-    print(f'-------------------XML:------')
-    print(doc_xml_txt)
+    #print(f'New doc! (lang:{lang})')
+    #print(f'-------------------TEXT:------')
+    #print(doc_clean_txt)
+    #print(f'-------------------XML:------')
+    #print(doc_xml_txt)
+
+
+    return ntp_id, original_pdf_name, lang, doc_clean_txt 
+
+
+
+
 
 
 
@@ -126,6 +169,69 @@ def process_pdf(pdf_path, pipe):
 # Define a custom argument type for a list of strings
 def list_of_strings(arg):
     return arg.split(',')
+
+
+
+
+def chunk_list_in_n_slices(l, n):
+    ''' Primitive
+        n number of elements per chunck
+    '''
+    for i in range(0, len(l), n):  
+        yield l[i:i + n] 
+
+
+
+
+def _create_parquet_file(slice_list_of_procurements, list_index):
+    '''
+        list_index: just to keep track of the general slice index
+    
+    '''
+
+
+    
+
+    columns = {
+        'procurement_id': 'string',
+        'doc_name' : 'string',
+        'content': 'string',  # This column will contain long text
+        'alternative_lang': 'string',
+        'translated_content': 'string',
+    }
+
+
+
+    # Get results of each procuremetn
+    # [ _process_procurement_folder(ntp) for ntp in list_of_files]
+
+    unfolded_list =  []
+    [ unfolded_list.extend(_process_procurement_folder(ntp)) for ntp in slice_list_of_procurements]
+ 
+
+
+    df_content = [ {'procurement_id': ntp_id, 'doc_name':doc_name,  'content': txt } for (ntp_id, doc_name, txt) in  unfolded_list]
+    logging.info(f'Finished doc processing for parquet slice {list_index}... Starting conversion')
+    df = pd.DataFrame(df_content)
+    n_of_docs_in_slice = df.shape[0]
+
+
+
+
+
+    # Writing parquet
+    logging.info(f'Creating parquet number {list_index} file...')
+    os.makedirs(PARQUET_OUTPUT_PATH_FOLDER,exist_ok = True)
+    output_file_name = f'procurements_file_{list_index}_containing_{n_of_docs_in_slice}_docs.parq'
+    #write(PARQUET_OUTPUT_PATH, df) # C MEMORY ERROR
+    df.to_parquet(  os.path.join(PARQUET_OUTPUT_PATH_FOLDER,output_file_name), 
+                    #engine='fastparquet', 
+                    engine='pyarrow', 
+                    compression='lz4'
+                  )
+    
+ 
+
 
 
 
@@ -146,12 +252,6 @@ def _parse_args():
                         )
     
 
-    #parser.add_argument('-l',
-    #                    '--list_of_inputs_and_outputs', 
-    #                    action='append', 
-    #                    default=None,
-    #                    help='List of docs to process. Each element must be preceded by the argument mark. Each pair input,output must be separated by commas.',
-    #                    )
 
     
     parser.add_argument("-o", 
@@ -160,11 +260,6 @@ def _parse_args():
                         )
 
 
-    #parser.add_argument("-m", "--model", 
-    #                    default="https://huggingface.co/BSC-LT/NextProcurement_pdfutils",
-    #                    help="Path to used doc-processing model."
-    #                    )
-    #
 
     parser.add_argument('--override_output',
                         action="store_true",
@@ -194,6 +289,11 @@ def _parse_args():
     return args
 
 
+
+
+
+
+
 def main(*args, **kwargs):
 
 
@@ -201,8 +301,7 @@ def main(*args, **kwargs):
     args = _parse_args()
      
 
-
-    # Load model and pipeline
+    # Classifier: Load model and pipeline
     os.environ["TOKENIZERS_PARALLELISM"] = "false"
     tokenizer = AutoTokenizer.from_pretrained(str(PDF2TXT_CLASSIFIER_MODEL))
     model = AutoModelForSequenceClassification.from_pretrained(str(PDF2TXT_CLASSIFIER_MODEL))
@@ -211,12 +310,19 @@ def main(*args, **kwargs):
 
 
 
+
+
+
+    # Slicing procurements for different parquet files slices
     list_of_pdfs = list_dir(args.input)
+    list_of_lists = chunk_list_in_n_slices(list_of_pdfs, LIMIT_N_PROCUREMENTS_PER_PARQUET)
 
     
 
     # Process list of pdfs
-    [ process_pdf(pdf_path, pipe) for pdf_path in list_of_pdfs]
+    #[ process_pdf(pdf_path, pipe) for pdf_path in list_of_pdfs]
+    for index, sublist_of_pdfs in enumerate(list_of_pdfs):
+        #[ process_pdf(pdf_path, pipe) for pdf_path in sublist_of_pdfs]
 
 
     ##### TODO I SHOULD HANDLE IT SO IT GIVES EVERYTHING I NEEEEEEEEED
