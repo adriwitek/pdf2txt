@@ -327,21 +327,19 @@ def main(*args, **kwargs):
 
 
 
-
-
-
     # Slicing procurements for different parquet files slices
     list_of_pdfs = list_dir(args.input)
+    if(len(list_of_pdfs) <1):
+        logging.info('No pdf documents fount in provided input! Quitting...')
+        return 
     list_of_lists = chunk_list_in_n_slices(list_of_pdfs, LIMIT_N_PROCUREMENTS_PER_PARQUET)
 
     
 
     # Process list of pdfs
     #[ process_pdf(pdf_path, pipe) for pdf_path in list_of_pdfs]
-    for list_index, sublist_of_pdfs in enumerate(list_of_pdfs):
+    for list_index, sublist_of_pdfs in enumerate(list_of_lists):
         _create_parquet_file(sublist_of_pdfs, list_index, pipe,args.output)
-
-
 
 
 
