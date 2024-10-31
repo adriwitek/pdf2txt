@@ -168,7 +168,7 @@ def process_pdf(pdf_path, pipe):
     #print(doc_xml_txt)
 
 
-    return ntp_id, original_pdf_name , doc_xml_txt , lang, tranlated_doc_xml_txt
+    return (ntp_id, original_pdf_name , doc_xml_txt , lang, tranlated_doc_xml_txt)
 
 
 
