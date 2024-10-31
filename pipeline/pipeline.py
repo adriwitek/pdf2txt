@@ -140,11 +140,22 @@ def process_pdf(pdf_path, pipe):
     # Lang detection
     lang = get_language(doc_clean_txt)
 
+
+    # Tranlated context
+    #TODO
+    tranlated_doc_xml_txt = ''
+
+
+
+
     # Pdf basename
     original_pdf_name = os.path.basename(pdf_path)
 
     # Proc ID  (if can be located)
     ntp_id = _extract_proc_ntp_id(original_pdf_name)
+
+
+
 
 
 
@@ -157,7 +168,7 @@ def process_pdf(pdf_path, pipe):
     #print(doc_xml_txt)
 
 
-    return ntp_id, original_pdf_name, lang, doc_clean_txt 
+    return ntp_id, original_pdf_name , doc_xml_txt , lang, tranlated_doc_xml_txt
 
 
 
@@ -183,18 +194,18 @@ def chunk_list_in_n_slices(l, n):
 
 
 
-def _create_parquet_file(slice_list_of_procurements, list_index):
+def _create_parquet_file(slice_list_of_procurements, list_index, pipe,output_folder):
     '''
         list_index: just to keep track of the general slice index
     
     '''
 
 
-    
+
 
     columns = {
         'procurement_id': 'string',
-        'doc_name' : 'string',
+        'original_doc_name' : 'string',
         'content': 'string',  # This column will contain long text
         'alternative_lang': 'string',
         'translated_content': 'string',
@@ -206,30 +217,36 @@ def _create_parquet_file(slice_list_of_procurements, list_index):
     # [ _process_procurement_folder(ntp) for ntp in list_of_files]
 
     unfolded_list =  []
-    [ unfolded_list.extend(_process_procurement_folder(ntp)) for ntp in slice_list_of_procurements]
+    [ unfolded_list.extend(process_pdf(pdt_path, pipe)) for pdt_path in slice_list_of_procurements]
  
-
-
-    df_content = [ {'procurement_id': ntp_id, 'doc_name':doc_name,  'content': txt } for (ntp_id, doc_name, txt) in  unfolded_list]
-    logging.info(f'Finished doc processing for parquet slice {list_index}... Starting conversion')
+ 
+    # Parquet generation
+    df_content = [ {'procurement_id': ntp_id, 
+                    'original_doc_name': original_pdf_name, 
+                    'content': doc_xml_txt ,
+                    'alternative_lang': lang ,
+                    'translated_content': tranlated_doc_xml_txt,
+                    } for (ntp_id, original_pdf_name , doc_xml_txt , lang, tranlated_doc_xml_txt) in  unfolded_list
+                ]
     df = pd.DataFrame(df_content)
     n_of_docs_in_slice = df.shape[0]
 
 
 
-
-
     # Writing parquet
-    logging.info(f'Creating parquet number {list_index} file...')
-    os.makedirs(PARQUET_OUTPUT_PATH_FOLDER,exist_ok = True)
+    os.makedirs(output_folder,exist_ok = True)
     output_file_name = f'procurements_file_{list_index}_containing_{n_of_docs_in_slice}_docs.parq'
+    output_path = os.path.join(output_folder,output_file_name)
+    logging.info(f'Creating parquet with index {list_index} as file named as:{output_path} ...')
+
     #write(PARQUET_OUTPUT_PATH, df) # C MEMORY ERROR
-    df.to_parquet(  os.path.join(PARQUET_OUTPUT_PATH_FOLDER,output_file_name), 
+    df.to_parquet(  output_path, 
                     #engine='fastparquet', 
                     engine='pyarrow', 
                     compression='lz4'
                   )
-    
+    logging.info(f'File Saved!')
+
  
 
 
@@ -282,9 +299,9 @@ def _parse_args():
         err_msg = "ERROR: Provided input is not a directory:{args.input}"
         raise  Exception( err_msg )
 
-    if(args.output is None ):
-        err_msg = "ERROR: --output path must be provided!"
-        raise  Exception( err_msg )
+    #if(args.output is None ):
+    #    err_msg = "ERROR: --output path must be provided!"
+    #    raise  Exception( err_msg )
 
     return args
 
@@ -321,11 +338,10 @@ def main(*args, **kwargs):
 
     # Process list of pdfs
     #[ process_pdf(pdf_path, pipe) for pdf_path in list_of_pdfs]
-    for index, sublist_of_pdfs in enumerate(list_of_pdfs):
-        #[ process_pdf(pdf_path, pipe) for pdf_path in sublist_of_pdfs]
+    for list_index, sublist_of_pdfs in enumerate(list_of_pdfs):
+        _create_parquet_file(sublist_of_pdfs, list_index, pipe,args.output)
 
 
-    ##### TODO I SHOULD HANDLE IT SO IT GIVES EVERYTHING I NEEEEEEEEED
 
 
 
