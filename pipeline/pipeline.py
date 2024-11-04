@@ -20,7 +20,7 @@ from libs.lang_indentificator import *
 #from libs.machine_translation.texttokenizer import TextTokenizer
 import libs.machine_translation.srx_segmenter
 import libs.machine_translation.texttokenizer
-import libs.machine_translation.translate
+import libs.machine_translation.translate as tr_model
 
 ###################################
 # CONFIGURABLE MACROS 
@@ -196,7 +196,7 @@ def process_pdf(pdf_path, pipe, translator):
 
 
             equivalent_lang_code = _lang_code_translator_2(lang)
-            tranlated_doc_xml_txt = translate_document(doc_xml_txt, equivalent_lang_code, tokenizer,spm, translator_model)
+            tranlated_doc_xml_txt = tr_model.translate_document(doc_xml_txt, equivalent_lang_code, tokenizer,spm, translator_model)
 
 
             
@@ -395,10 +395,10 @@ def main(*args, **kwargs):
     # Tranlation: Load model(s) and pipeline
 
     print(f'DEBUG:INIT MT MODELS...')
-    translator_model = init_translator_model()
-    tokenizer_cat, spm_cat =  init_tokenizers('cat_Latn')
-    tokenizer_glg, spm_glg = init_tokenizers('glg_Latn')
-    tokenizer_eus, spm_eus =  init_tokenizers('eus_Latn')
+    translator_model = tr_model.init_translator_model()
+    tokenizer_cat, spm_cat =  tr_model.init_tokenizers('cat_Latn')
+    tokenizer_glg, spm_glg = tr_model.init_tokenizers('glg_Latn')
+    tokenizer_eus, spm_eus =  tr_model.init_tokenizers('eus_Latn')
  
 
     translator = {}
