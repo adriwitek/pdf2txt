@@ -38,7 +38,7 @@ def _lang_code_translator(src_lang):
     elif( 'glg' in src_lang):
         translated_lang_code = 'Galician'
     elif( 'eus' in src_lang):
-        translated_lang_code = 'Euskera'
+        translated_lang_code = 'Default'
     else:
       raise Exception('Translation language couldnt be located.')
    
