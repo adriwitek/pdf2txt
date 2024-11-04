@@ -116,7 +116,7 @@ def translate_xml_tree(xml_string, tokenizer,spm, translator, tags=['heading','p
     instances = xml_tree.findAll(tag)
     for  ins in instances:
         text = ins.getText()
-        ins.string = translate(text, tokenizer)
+        ins.string = translate(text, tokenizer, spm, translator)
 
   return str(xml_tree).replace('\n','\\n')
 
