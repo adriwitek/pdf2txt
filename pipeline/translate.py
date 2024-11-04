@@ -6,7 +6,7 @@ import pandas as pd
 import unicodedata
 import os
 import argparse
-#from texttokenizer import TextTokenizer
+from texttokenizer import TextTokenizer
 
 
 
@@ -15,7 +15,9 @@ import argparse
 
 TARGET_LANG = 'spa'
 
-TRANSLATION_MODEL_DIR='/app/pdf2txt/pipeline/models/nllb/nllb-200-distilled-600M/'
+#TRANSLATION_MODEL_DIR='/app/pdf2txt/pipeline/models/nllb/nllb-200-distilled-600M/'
+TRANSLATION_MODEL_DIR='/app/pdf2txt/pipeline/models/nllb/nllb-ct2/'
+
 
 MAX_SENTENCE_BATCH=40
 
@@ -141,13 +143,12 @@ def init_translator_model():
             translator (model)
     
     '''
-
-    model_path = os.path.join(TRANSLATION_MODEL_DIR, 'pytorch_model.bin')
+    
 
     try:
-        translator = ctranslate2.Translator(model_path, device='cuda')
+        translator = ctranslate2.Translator(TRANSLATION_MODEL_DIR, device='cuda')
     except:
-        translator = ctranslate2.Translator(model_path, device='cpu')
+        translator = ctranslate2.Translator(TRANSLATION_MODEL_DIR, device='cpu')
 
 
     return translator

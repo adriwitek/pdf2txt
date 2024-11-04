@@ -18,9 +18,7 @@ from libs.pdf_to_text import *
 from libs.txt2xml_creator import *
 from libs.lang_indentificator import *
 #from libs.machine_translation.texttokenizer import TextTokenizer
-import libs.machine_translation.srx_segmenter
-import libs.machine_translation.texttokenizer
-import libs.machine_translation.translate as tr_model
+import translate as tr_model
 
 ###################################
 # CONFIGURABLE MACROS 

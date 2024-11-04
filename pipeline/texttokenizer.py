@@ -19,7 +19,7 @@
 # Boston, MA 02111-1307, USA.
 
 from __future__ import print_function
-#from srx_segmenter import SrxSegmenter, parse
+from srx_segmenter import SrxSegmenter, parse
 import os
 
 
