@@ -142,10 +142,12 @@ def init_translator_model():
     
     '''
 
+    model_path = os.path.join(TRANSLATION_MODEL_DIR, 'pytorch_model.bin')
+
     try:
-        translator = ctranslate2.Translator(TRANSLATION_MODEL_DIR, device='cuda')
+        translator = ctranslate2.Translator(model_path, device='cuda')
     except:
-        translator = ctranslate2.Translator(TRANSLATION_MODEL_DIR, device='cpu')
+        translator = ctranslate2.Translator(model_path, device='cpu')
 
 
     return translator
