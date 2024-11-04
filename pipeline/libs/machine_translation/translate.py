@@ -6,7 +6,7 @@ import pandas as pd
 import unicodedata
 import os
 import argparse
-from texttokenizer import TextTokenizer
+#from texttokenizer import TextTokenizer
 
 
 
@@ -162,7 +162,7 @@ def init_tokenizers(src_lang):
     '''
     
 
-    tokenizer=TextTokenizer( _lang_code_translator(src_lang) )
+    tokenizer= TextTokenizer( _lang_code_translator(src_lang) )
 
 
     spm=AutoTokenizer.from_pretrained(TRANSLATION_MODEL_DIR, src_lang=src_lang)
