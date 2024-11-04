@@ -17,8 +17,9 @@ from transformers import AutoTokenizer, AutoModelForSequenceClassification, pipe
 from libs.pdf_to_text import *
 from libs.txt2xml_creator import *
 from libs.lang_indentificator import *
-
-
+#from libs.machine_translation.texttokenizer import TextTokenizer
+#from libs.machine_translation.texttokenizer import TextTokenizer
+import libs.machine_translation.translate
 
 ###################################
 # CONFIGURABLE MACROS 
@@ -39,11 +40,35 @@ DEVICE = -1
 PDF2TXT_CLASSIFIER_MODEL = '/app/pdf2txt/pipeline/models/nextprocurement_pdfutils'
 MAX_TOKENIZER_LENGTH=512
 
-# Translation Model
-TRANSLATION_MODEL_DIR='/app/pdf2txt/pipeline/models/nllb/nllb-200-distilled-600M/'
 
 NTP_PATTERN = r"ntp\d+_.*\.pdf"
 
+
+
+
+
+
+
+
+
+def _lang_code_translator_2(src_lang):
+    '''
+        INput: ca,gl or eu
+    '''
+   
+    translated_lang_code = ''
+   
+    if( 'ca' in src_lang ):
+      translated_lang_code = 'cat_Latn'
+    elif( 'gl' in src_lang):
+        translated_lang_code = 'glg_Latn'
+    elif( 'eu' in src_lang):
+        translated_lang_code = 'eus_Latn'
+    else:
+      raise Exception('Translation language couldnt be located.')
+   
+
+    return translated_lang_code
 
 
 
@@ -125,7 +150,7 @@ def _extract_proc_ntp_id(pdf_name):
         return None
 
 
-def process_pdf(pdf_path, pipe):
+def process_pdf(pdf_path, pipe, translator):
     '''Func that process each pdf and return the desired output'''
 
 
@@ -141,9 +166,51 @@ def process_pdf(pdf_path, pipe):
     lang = get_language(doc_clean_txt)
 
 
+
+
+
+
+
+
+
+    ############################
+
+
     # Tranlated context
     #TODO
     tranlated_doc_xml_txt = ''
+
+    try:
+
+        if (not 'es' in lang):
+
+            translator_model = translator['model']
+
+            if('ca' in lang):
+                tokenizer, spm = translator['cat']
+            elif('gl' in lang):
+                tokenizer, spm = translator['glg']
+            elif('eu' in lang):
+                tokenizer, spm = translator['eus']
+
+
+            equivalent_lang_code = _lang_code_translator_2(lang)
+            tranlated_doc_xml_txt = translate_document(doc_xml_txt, equivalent_lang_code, tokenizer,spm, translator_model)
+
+
+            
+            print(f'DEBUG:Original content:\n{doc_xml_txt}')
+            print(f'\n\n\n---------------\n\n\n')
+            print(f'DEBUG:Translated content:\n{tranlated_doc_xml_txt}')
+
+    except Exception as e:
+        print(f'Translation couldnt be done: Exception:\n {e}')
+
+    #################
+
+
+
+
 
 
 
@@ -194,10 +261,10 @@ def chunk_list_in_n_slices(l, n):
 
 
 
-def _create_parquet_file(slice_list_of_procurements, list_index, pipe,output_folder):
+def _create_parquet_file(slice_list_of_procurements, list_index, pipe, translator, output_folder):
     '''
         list_index: just to keep track of the general slice index
-    
+        translator: dict with translator models
     '''
 
 
@@ -214,7 +281,7 @@ def _create_parquet_file(slice_list_of_procurements, list_index, pipe,output_fol
 
 
     # Get results of each procuremetn
-    info = [process_pdf(pdt_path, pipe) for pdt_path in slice_list_of_procurements]
+    info = [process_pdf(pdt_path, pipe, translator) for pdt_path in slice_list_of_procurements]
  
  
     # Parquet generation
@@ -324,6 +391,26 @@ def main(*args, **kwargs):
 
 
 
+    # Tranlation: Load model(s) and pipeline
+
+    print(f'DEBUG:INIT MT MODELS...')
+    translator_model = init_translator_model()
+    tokenizer_cat, spm_cat =  init_tokenizers('cat_Latn')
+    tokenizer_glg, spm_glg = init_tokenizers('glg_Latn')
+    tokenizer_eus, spm_eus =  init_tokenizers('eus_Latn')
+ 
+
+    translator = {}
+    translator['model'] = translator_model
+    translator['cat'] = ( tokenizer_cat, spm_cat )
+    translator['glg'] = ( tokenizer_glg, spm_glg )
+    translator['eus'] = ( tokenizer_eus, spm_eus )
+
+    print(f'DEBUG:INIT MT MODELS DONE!')
+
+
+
+
     # Slicing procurements for different parquet files slices
     list_of_pdfs = list_dir(args.input)
     if(len(list_of_pdfs) <1):
@@ -336,7 +423,7 @@ def main(*args, **kwargs):
     # Process list of pdfs
     #[ process_pdf(pdf_path, pipe) for pdf_path in list_of_pdfs]
     for list_index, sublist_of_pdfs in enumerate(list_of_lists):
-        _create_parquet_file(sublist_of_pdfs, list_index, pipe,args.output)
+        _create_parquet_file(sublist_of_pdfs, list_index, pipe, translator, args.output)
 
 
 
