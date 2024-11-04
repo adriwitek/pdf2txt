@@ -131,6 +131,7 @@ def translate_document(xml_text, src_lang, tokenizer,spm, translator):
     '''Function to call per each doc that should be translated'''
 
     xml_text = xml_text.decode('utf-8')
+    #stripped_text_xml = _normalize_input_string(xml_text.strip())
     stripped_text_xml = _normalize_input_string(xml_text.strip())
     translated_text_xml = translate_xml_tree(stripped_text_xml, tokenizer, spm, translator)
 
