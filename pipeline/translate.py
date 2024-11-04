@@ -30,7 +30,7 @@ def _lang_code_translator(src_lang):
     translated_lang_code = ''
    
     if( 'cat' in src_lang ):
-      translated_lang_code = 'Catalonian'
+      translated_lang_code = 'Catalan'
     elif( 'glg' in src_lang):
         translated_lang_code = 'Galician'
     elif( 'eus' in src_lang):
