@@ -19,6 +19,10 @@ TARGET_LANG = 'spa'
 TRANSLATION_MODEL_DIR='/app/pdf2txt/pipeline/models/nllb/nllb-ct2/'
 
 
+TRANSLATION_MODEL_DIR_tok='/app/pdf2txt/pipeline/models/nllb/nllb-200-distilled-600M/'
+
+
+
 MAX_SENTENCE_BATCH=40
 
 TARGET_PREFIX = 'spa_Latn'
@@ -168,7 +172,7 @@ def init_tokenizers(src_lang):
     tokenizer= TextTokenizer( _lang_code_translator(src_lang) )
 
 
-    spm=AutoTokenizer.from_pretrained(TRANSLATION_MODEL_DIR, src_lang=src_lang)
+    spm=AutoTokenizer.from_pretrained(TRANSLATION_MODEL_DIR_tok, src_lang=src_lang)
     return tokenizer, spm
 
 
