@@ -210,8 +210,8 @@ def process_pdf(pdf_path, pipe, translator):
             print('Trying to translate only txt:')
             print(f'DEBUG:Original content (TXT):\n{doc_clean_txt}')
             print(f'\n\n\n---------------\n\n\n')
-            tr_model.translate(doc_clean_txt, tokenizer, spm, translator_model)
-            print(f'DEBUG:Translated content (TXT):\n{tranlated_doc_xml_txt}')
+            doc_clean_txt_tranlated = tr_model.translate(doc_clean_txt, tokenizer, spm, translator_model)
+            print(f'DEBUG:Translated content (TXT):\n{doc_clean_txt_tranlated}')
 
             print(f'\n\n\n<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n\n\n')
 
@@ -391,7 +391,6 @@ def main(*args, **kwargs):
 
     # Tranlation: Load model(s) and pipeline
 
-    print(f'DEBUG:INIT MT MODELS...')
     translator_model = tr_model.init_translator_model()
     tokenizer_cat, spm_cat =  tr_model.init_tokenizers('cat_Latn')
     tokenizer_glg, spm_glg = tr_model.init_tokenizers('glg_Latn')
@@ -404,7 +403,6 @@ def main(*args, **kwargs):
     translator['glg'] = ( tokenizer_glg, spm_glg )
     translator['eus'] = ( tokenizer_eus, spm_eus )
 
-    print(f'DEBUG:INIT MT MODELS DONE!')
 
 
 
