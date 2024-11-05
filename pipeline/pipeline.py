@@ -88,8 +88,8 @@ def _get_txt_from_pdf_aux_without_marks(pdf_path, pipe):
     '''Processes and saves each pdf file'''
 
     all_paragraphs = get_paragraphs_from_pdf(os.path.join(pdf_path))
-    for _,  paragraphs_in_page in enumerate(all_paragraphs):
-        buffer_txt = []
+    buffer_txt = []
+    for page_number,  paragraphs_in_page in enumerate(all_paragraphs):
         for text, coords, is_table in paragraphs_in_page:
             if not is_table: #Process if not table
                 buffer_txt.append(text.rstrip() + '\n')
@@ -103,8 +103,8 @@ def _get_txt_from_pdf_aux(pdf_path, pipe):
     '''Processes and saves each pdf file'''
 
     all_paragraphs = get_paragraphs_from_pdf(os.path.join(pdf_path))
+    buffer_txt = []
     for page_number,  paragraphs_in_page in enumerate(all_paragraphs):
-        buffer_txt = []
         buffer_txt.append('## PAGE:'+ str(page_number) + '##\n\n')
         for text, coords, is_table in paragraphs_in_page:
             if not is_table: #Process if not table
