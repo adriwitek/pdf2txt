@@ -84,6 +84,20 @@ def list_dir(directory):
 
 
 
+def _get_txt_from_pdf_aux_without_marks(pdf_path, pipe):
+    '''Processes and saves each pdf file'''
+
+    all_paragraphs = get_paragraphs_from_pdf(os.path.join(pdf_path))
+    for _,  paragraphs_in_page in enumerate(all_paragraphs):
+        buffer_txt = []
+        for text, coords, is_table in paragraphs_in_page:
+            if not is_table: #Process if not table
+                buffer_txt.append(text.rstrip() + '\n')
+    # Return txt
+    return ''.join(buffer_txt)
+
+
+
 
 def _get_txt_from_pdf_aux(pdf_path, pipe):
     '''Processes and saves each pdf file'''
@@ -91,7 +105,6 @@ def _get_txt_from_pdf_aux(pdf_path, pipe):
     all_paragraphs = get_paragraphs_from_pdf(os.path.join(pdf_path))
     for page_number,  paragraphs_in_page in enumerate(all_paragraphs):
         buffer_txt = []
-        #f.write('## PAGE:'+ str(page_number) + '##\n\n')
         buffer_txt.append('## PAGE:'+ str(page_number) + '##\n\n')
         for text, coords, is_table in paragraphs_in_page:
             if not is_table: #Process if not table
@@ -100,7 +113,6 @@ def _get_txt_from_pdf_aux(pdf_path, pipe):
                 buffer_txt.append('#' + str(label[0]['label']).upper().strip() + ':\n' + text.rstrip() + '\n')
             else:
                 label = "Table"
-                #f.write('#' + label.upper() + ':\n' + '...\n')
                 buffer_txt.append('#' + label.upper() + ':\n' + '...\n')
     # Return txt
     return ''.join(buffer_txt)
@@ -108,7 +120,7 @@ def _get_txt_from_pdf_aux(pdf_path, pipe):
   
 
 
-def get_txt_from_pdf (pdf_path, pipe):
+def get_txt_from_pdf (pdf_path, pipe, save_output_as_txt):
     '''Func that _get_txt_from_pdf_aux()  handles unexpected errors
          so the comprehension list does not fail its execution.
     
@@ -119,8 +131,13 @@ def get_txt_from_pdf (pdf_path, pipe):
     filename = os.fsdecode(pdf_path)
     if filename.endswith(".pdf"): 
         try:
-          txt =  _get_txt_from_pdf_aux(pdf_path, pipe)
-          return txt
+          if(save_output_as_txt):# txt
+            content =  _get_txt_from_pdf_aux_without_marks(pdf_path, pipe)
+          else: # xml
+            content =  _get_txt_from_pdf_aux(pdf_path, pipe)
+
+          return content
+    
         except Exception as e:
             err_msg = "ERROR: An error ocurred parsing the document: " + filename + '. \n\t' + str(e)
             #raise  Exception( err_msg)
@@ -149,7 +166,7 @@ def _extract_proc_ntp_id(pdf_name):
         return None
 
 
-def process_pdf(pdf_path, pipe, translator):
+def process_pdf(pdf_path, pipe, translator, save_output_as_txt):
     '''Func that process each pdf and return the desired output'''
 
 
@@ -163,28 +180,23 @@ def process_pdf(pdf_path, pipe, translator):
 
 
     # Txt processing
-    doc_clean_txt = get_txt_from_pdf (pdf_path, pipe)
+    doc_clean_txt = get_txt_from_pdf (pdf_path, pipe, save_output_as_txt) # (txt or "txt to xml marks" depending or argument)
     if(doc_clean_txt) is None: # Skipping doc
         return
-
-    # XML parsing
-    doc_xml_txt = process_doc(doc_clean_txt)
-
+    
     # Lang detection
     lang = get_language(doc_clean_txt)
 
+    # XML parsing
+    if(save_output_as_txt):
+        original_content = doc_clean_txt
+    else:
+        original_content = process_doc(doc_clean_txt)
 
 
 
-
-
-
-    ############################
-
-
-    # Tranlated context
-    #TODO
-    tranlated_doc_xml_txt = ''
+    # Translate content
+    translated_content = ''
     try:
         if (not 'es' in lang):
             translator_model = translator['model']
@@ -196,24 +208,18 @@ def process_pdf(pdf_path, pipe, translator):
                 tokenizer, spm = translator['eus']
 
             equivalent_lang_code = _lang_code_translator_2(lang)
-            tranlated_doc_xml_txt = tr_model.translate_document(doc_xml_txt, equivalent_lang_code, tokenizer,spm, translator_model)
+
+            if(save_output_as_txt):#txt
+                translated_content = tr_model.translate(doc_clean_txt, tokenizer, spm, translator_model)
+            else:#xml
+                translated_content = tr_model.translate_document(original_content, equivalent_lang_code, tokenizer,spm, translator_model)
+
+
 
             print(f'\n\n\n\n\n\n************\n\n\n')
-            print(f'DEBUG:Original content (XML):\n{doc_xml_txt}')
+            print(f'DEBUG:Original content:\n{original_content}')
             print(f'\n\n\n---------------\n\n\n')
-            print(f'DEBUG:Translated content (XML):\n{tranlated_doc_xml_txt}')
-
-
-
-            ## Debug 2
-            print(f'\n\n\n>>>>>>>>>>>>>>>>>>>>>>>>>>>><<>>>>>>>>>>>>>>>>>>>>>\n\n\n')
-            print('Trying to translate only txt:')
-            print(f'DEBUG:Original content (TXT):\n{doc_clean_txt}')
-            print(f'\n\n\n---------------\n\n\n')
-            doc_clean_txt_tranlated = tr_model.translate(doc_clean_txt, tokenizer, spm, translator_model)
-            print(f'DEBUG:Translated content (TXT):\n{doc_clean_txt_tranlated}')
-
-            print(f'\n\n\n<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n\n\n')
+            print(f'DEBUG:Translated content:\n{translated_content}')
 
 
     except Exception as e:
@@ -224,16 +230,7 @@ def process_pdf(pdf_path, pipe, translator):
 
 
 
-
-    # Debuggg
-    #print(f'New doc! (lang:{lang})')
-    #print(f'-------------------TEXT:------')
-    #print(doc_clean_txt)
-    #print(f'-------------------XML:------')
-    #print(doc_xml_txt)
-
-
-    return (ntp_id, original_pdf_name , doc_xml_txt , lang, tranlated_doc_xml_txt)
+    return (ntp_id, original_pdf_name , original_content , lang, translated_content)
 
 
 
@@ -259,7 +256,7 @@ def chunk_list_in_n_slices(l, n):
 
 
 
-def _create_parquet_file(slice_list_of_procurements, list_index, pipe, translator, output_folder):
+def _create_parquet_file(slice_list_of_procurements, list_index, pipe, translator, output_folder, save_output_as_txt):
     '''
         list_index: just to keep track of the general slice index
         translator: dict with translator models
@@ -279,7 +276,7 @@ def _create_parquet_file(slice_list_of_procurements, list_index, pipe, translato
 
 
     # Get results of each procuremetn
-    info = [process_pdf(pdt_path, pipe, translator) for pdt_path in slice_list_of_procurements]
+    info = [process_pdf(pdt_path, pipe, translator, save_output_as_txt) for pdt_path in slice_list_of_procurements]
  
  
     # Parquet generation
@@ -340,9 +337,9 @@ def _parse_args():
 
 
 
-    parser.add_argument('--override_output',
+    parser.add_argument('--txt',
                         action="store_true",
-                        help='if set overrides the output'
+                        help='Is passed, content will be saved inside parquet files as plain txt instead of default structured XML format. '
                         )
 
 
@@ -417,9 +414,8 @@ def main(*args, **kwargs):
     
 
     # Process list of pdfs
-    #[ process_pdf(pdf_path, pipe) for pdf_path in list_of_pdfs]
     for list_index, sublist_of_pdfs in enumerate(list_of_lists):
-        _create_parquet_file(sublist_of_pdfs, list_index, pipe, translator, args.output)
+        _create_parquet_file(sublist_of_pdfs, list_index, pipe, translator, args.output, args.txt)
 
 
 
