@@ -72,7 +72,7 @@ def _translate_batch(input_batch, spm, model, max_sentence_batch=10):
       for pos in range(0,len(partial_result)):
         tokenized = partial_result[pos][0]['tokens'][1:]
         translated = spm.decode(spm.convert_tokens_to_ids(tokenized))
-        print(translated)
+        #print(translated)
         batch_output.append(translated)
 
     return batch_output

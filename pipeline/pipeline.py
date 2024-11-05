@@ -153,6 +153,15 @@ def process_pdf(pdf_path, pipe, translator):
     '''Func that process each pdf and return the desired output'''
 
 
+
+   # Pdf basename
+    original_pdf_name = os.path.basename(pdf_path)
+
+    # Proc ID  (if can be located)
+    ntp_id = _extract_proc_ntp_id(original_pdf_name)
+
+
+
     # Txt processing
     doc_clean_txt = get_txt_from_pdf (pdf_path, pipe)
     if(doc_clean_txt) is None: # Skipping doc
@@ -170,21 +179,15 @@ def process_pdf(pdf_path, pipe, translator):
 
 
 
-
-
     ############################
 
 
     # Tranlated context
     #TODO
     tranlated_doc_xml_txt = ''
-
     try:
-
         if (not 'es' in lang):
-
             translator_model = translator['model']
-
             if('ca' in lang):
                 tokenizer, spm = translator['cat']
             elif('gl' in lang):
@@ -192,35 +195,31 @@ def process_pdf(pdf_path, pipe, translator):
             elif('eu' in lang):
                 tokenizer, spm = translator['eus']
 
-
             equivalent_lang_code = _lang_code_translator_2(lang)
             tranlated_doc_xml_txt = tr_model.translate_document(doc_xml_txt, equivalent_lang_code, tokenizer,spm, translator_model)
 
-
-            
-            print(f'DEBUG:Original content:\n{doc_xml_txt}')
+            print(f'\n\n\n\n\n\n************\n\n\n')
+            print(f'DEBUG:Original content (XML):\n{doc_xml_txt}')
             print(f'\n\n\n---------------\n\n\n')
-            print(f'DEBUG:Translated content:\n{tranlated_doc_xml_txt}')
+            print(f'DEBUG:Translated content (XML):\n{tranlated_doc_xml_txt}')
+
+
+
+            ## Debug 2
+            print(f'\n\n\n>>>>>>>>>>>>>>>>>>>>>>>>>>>><<>>>>>>>>>>>>>>>>>>>>>\n\n\n')
+            print('Trying to translate only txt:')
+            print(f'DEBUG:Original content (TXT):\n{doc_clean_txt}')
+            print(f'\n\n\n---------------\n\n\n')
+            tr_model.translate(doc_clean_txt, tokenizer, spm, translator)
+            print(f'DEBUG:Translated content (TXT):\n{tranlated_doc_xml_txt}')
+
+            print(f'\n\n\n<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n\n\n')
+
 
     except Exception as e:
-        print(f'Translation couldnt be done: Exception:\n {e}')
+        print(f'Translation could not be done: Exception:\n {e}')
 
     #################
-
-
-
-
-
-
-
-
-    # Pdf basename
-    original_pdf_name = os.path.basename(pdf_path)
-
-    # Proc ID  (if can be located)
-    ntp_id = _extract_proc_ntp_id(original_pdf_name)
-
-
 
 
 
