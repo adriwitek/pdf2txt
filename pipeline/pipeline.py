@@ -377,6 +377,13 @@ def main(*args, **kwargs):
     args = _parse_args()
      
 
+     # XML parsing
+    if(args.txt):
+        print('--> Output content will be plain txt.')
+    else:
+        print('--> Output content will be plain XML structured data.')
+
+
     # Classifier: Load model and pipeline
     os.environ["TOKENIZERS_PARALLELISM"] = "false"
     tokenizer = AutoTokenizer.from_pretrained(str(PDF2TXT_CLASSIFIER_MODEL))
