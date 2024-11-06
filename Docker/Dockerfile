@@ -10,7 +10,8 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y git git-lfs wget
 
 
-RUN git clone --depth 1 --branch main https://github.com/adriwitek/pdf2txt
+#RUN git clone --depth 1 --branch main https://github.com/adriwitek/pdf2txt
+RUN git clone --depth 1 --branch main https://github.com/nextprocurement/pdf2txt.git
 WORKDIR /app/pdf2txt/Docker
 RUN chmod +x setup_docker.sh && bash setup_docker.sh
 
