@@ -1,74 +1,40 @@
-# NextProcurement Project (v2)
+# PDF2TXT PIPELINE - NextProcurement.
 
-Pipeline (version 2) for NextProcurement Project.
+Dockerized pipeline to process pdf documents of public procurements.
+
+![alt text](https://github.com/TeMU-BSC/NextProcurement_v2/blob/main/img/pdf2txt_scheme.jpg "Pipeline Scheme.")
+
+
+
 
 
 ## About the tool
-It labels each pdf section according its function in the document (Title, header, paragraph...)
+The PDF2TXT module has been implemented as a dockerised pipeline, so that it can be easily used on any platform.
+By providing a directory with PDF documents as input to it, output files with apache parquet extension are generated.
+
+The text of each input PDF document is extracted and its language is identified.
+The text is then automatically translated into the corresponding language in the ‘Translation Engine’ module, powered by artificial intelligence models.
+The translated text is then converted into XML format (if desired). Finally, the information from the different documents is
+saved in batches of parquet files, allowing easy export to other applications.
+
+
+
+
+
 
 ## Usage
 
-### Downloading AI model
-
-Due to github size limitations this model should be downloaded from https://huggingface.co/BSC-LT/NextProcurement_pdfutils . To achieve that we can do:
-
-
-```bash
-cd pipeline/models/
-
-# Make sure you have git-lfs installed (https://git-lfs.com)
-git lfs install
-git clone https://huggingface.co/BSC-LT/NextProcurement_pdfutils
-```
-
-
-### Environment Setup
-It's recommended to create a new enviroment in order to avoid lib. version errors.The tool was tested under **python 3.7**, I highly recoomed using the same. Another option is to use the provided docker described in the next section.
-
-YOu can create a virtual env with the following command:
-
-```bash
-python -m venv env 
-```
-
-and activating it with:
-
-
-```bash
-source env/bin/activate
-```
-
-Then, dependencies should be installed:
-
-
-
-#### SYSTEM DEPENDENCIES:
- - poppler (this one is a little bit hard to install, this might helps you: https://cbrunet.net/python-poppler/installation.html)
- - leptonica
- - terrasec-ocr*
-   - *This files are alse needed by tesseact. Download and locate them under /usr/share/tesseract-ocr/4.00/tessdata/ (Depending on the configuration it can also be under /usr/local/share/tessdata or /usr/share/tessdata):
-     - Spanish OCR Model: https://github.com/tesseract-ocr/tessdata/blob/main/spa.traineddata
-     - Catalan OCR Model: https://github.com/tesseract-ocr/tessdata/blob/main/cat.traineddata
-     - Euskera OCR Model: https://github.com/tesseract-ocr/tessdata/blob/main/eus.traineddata
-     - Galician OCR Model: https://github.com/tesseract-ocr/tessdata/blob/main/glg.traineddata
-
-
-
-#### PYTHON DEPENDENCIES:
-```bash
-pip install --upgrade pip
-pip install --use-pep517 -r requirements.txt
-```
-
-
-
-### Docker
-
 Since it can be tricky to install the environment from scratch, a docker image is provided. 
+
+### 1. Getting the Docker Image.
+
+![alt text](https://github.com/TeMU-BSC/NextProcurement_v2/blob/main/img/docker_logo.jpg "docker icon.")
+
+
 
 To use it there are to options:
 
- 1. Download it directly from the docker repository, available [here](https://hub.docker.com/r/adriwitek/pdf2txt).
+ 1. Download it directly from the docker repository, --> LINK!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1.
 
  2. Creating it from the provided Dockerfile.
 
@@ -79,40 +45,84 @@ To use it there are to options:
    docker build -t pdf2txt:1.0 .
 ```
 
-And then:
+### 2. Starting the container
+
+We need now to run the docker container from the previous docker image. To do so we can do:
 
 ```bash
-   docker run -it pdf2txt:1.0
+  docker run -it -it \
+  -v <HOST LOCAL PATH>/input_folder/:/app/pdf2txt/<DOCKER_INPUT_PATH> \
+  -v <HOST LOCAL PATH>/output_folder/:/app/pdf2txt/<DOCKER_OUTPUT_PATH> \
+  pdf2txt:1.0
 ```
+We need to bind local input/output path from our host to the docker image file system. This way, <HOST LOCAL PATH> will be a desired local path in your current machine and <DOCKER_INPUT_PATH>   and <DOCKER_OUTPUT_PATH> will be folders inside the docker virtual machine. Paths shoud be always be folders!
 
-To run the image creating a container. An interactive shell will be given with the "-it" argument.
+
+Keep in mind that once binded, files can be seen in the host without additional configuration.
 
 
-### Usage
-Firstly remember to have the virtual enviroment already activated. Then,
+
+
+
+Using the provided examples, a call to set up the docker container will be:
 
 ```bash
-python pipeline/pipeline.py  \
-        --input <pdf file> | <folder with pdf files>> \
-        --output <output folder> \
-        --model <model paht> [NOT REQUIERED, will take default model if not specified] (desired model classify the sections (excluding tables) (title, header,etc.) )
+  docker run -it -it \
+  -v <HOST LOCAL PATH>/pdf2txt/examples/input_folder/:/app/pdf2txt/examples/input_folder/ \
+  -v <HOST LOCAL PATH>/pdf2txt/examples/output_folder/:/app/pdf2txt/examples/output_folder/ \
+  pdf2txt:1.0
 ```
 
-#### Example of use
+
+
+Once executed, a shell inside the docker virtual machine will be automatically provided.
+
+
+
+### 3. Executing the pipeline
+Now it is time to execute the pipeline, to do so just execute the following command:
 
 ```bash
-python pipeline/pipeline.py  \
-        --input examples_input_folder \
-        --output  output_folder_nextprocurement_project \
-        --model pipeline/models/nextprocurement_pdfutils/ \
+  python pipeline/pipeline.py --input /app/pdf2txt/<DOCKER_INPUT_PATH> --output /app/pdf2txt/<DOCKER_OUTPUT_PATH> 
 ```
-#### Ouput format
 
-*output* will be a folder containing a subfolder for each document in *input*. Each subfolder will contain:
-- **Doc_labeled_sections.txt** : A plain .txt:  with a label above each paragraph
-- **page_X.jpg** : Several .jpg files for each page in the document. Each image has colored rectangle over each paragraph and its corresponding label. An example looks like this:
+Or following the previous example
+```bash
+  python pipeline/pipeline.py --input /app/pdf2txt/examples/input_folder/ --output /app/pdf2txt/examples/output_folder/
+```
+
+
+
+
+### 4. (OPTIONAL) Switching provided content from XML to txt.
+The pipeline allows to extract pdf information in plain text instead of the deafult XML format, to do that just pass the --txt argument e.g.,
+
+Or following the previous example
+```bash
+  python pipeline/pipeline.py --input /app/pdf2txt/examples/input_folder/ --output /app/pdf2txt/examples/output_folder/ --txt
+```
+If not, the output will be structured in sections as an XML document:
 
 ![alt text](https://github.com/TeMU-BSC/NextProcurement_v2/blob/main/img/page_0.jpg "Example of an page_X.jpg")
+
+
+
+
+
+
+#### Output
+
+*output* will be a folder containing different batches of apache parquet files. At most each parquet file will contain 100k documents.
+
+Each parque file will contain the following columns:
+
+- **procurement_id** : Procurement id or None if not possible to identify. Only for pdfs with names with format: ntp[0-9]*_*.pdf
+- **original_doc_name** : Original document where the current row info. was extracted.
+- **content** : XML/TXT content extracted from the pdf document.
+- **lang** : 'es' or 'ca'/'eu'/'gl', according to the content language.
+- **translated_content** : If previous field was 'ca'/'eu'/'gl', the content translated to spanish.
+
+
 
 
 

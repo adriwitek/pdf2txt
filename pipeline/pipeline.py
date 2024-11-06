@@ -261,7 +261,7 @@ def _create_parquet_file(slice_list_of_procurements, list_index, pipe, translato
         'procurement_id': 'string',
         'original_doc_name' : 'string',
         'content': 'string',  # This column will contain long text
-        'alternative_lang': 'string',
+        'lang': 'string',
         'translated_content': 'string',
     }
 
@@ -275,7 +275,7 @@ def _create_parquet_file(slice_list_of_procurements, list_index, pipe, translato
     df_content = [ {'procurement_id': ntp_id, 
                     'original_doc_name': original_pdf_name, 
                     'content': doc_xml_txt ,
-                    'alternative_lang': lang ,
+                    'lang': lang ,
                     'translated_content': tranlated_doc_xml_txt,
                     } for (ntp_id, original_pdf_name , doc_xml_txt , lang, tranlated_doc_xml_txt) in  info 
                 ]
