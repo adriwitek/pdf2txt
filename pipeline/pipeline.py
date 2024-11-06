@@ -215,17 +215,9 @@ def process_pdf(pdf_path, pipe, translator, save_output_as_txt):
                 translated_content = tr_model.translate_document(original_content, equivalent_lang_code, tokenizer,spm, translator_model)
 
 
-
-            print(f'\n\n\n\n\n\n************\n\n\n')
-            print(f'DEBUG:Original content:\n{original_content}')
-            print(f'\n\n\n---------------\n\n\n')
-            print(f'DEBUG:Translated content:\n{translated_content}')
-
-
     except Exception as e:
         print(f'Translation could not be done: Exception:\n {e}')
 
-    #################
 
 
 
