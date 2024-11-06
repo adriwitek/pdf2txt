@@ -420,24 +420,7 @@ def main(*args, **kwargs):
 
 
 
-
-
-  
-    
-    
-
-
 if __name__ == "__main__":
     main()
 
 
-
-'''Run example:
-
-
-    # With a list of files:
-
-        > python3 pipeline/pipeline.py     --output /gpfs/scratch/bsc88/bsc88621/NextProcurement/_ttest_output_several_files  --model /gpfs/projects/bsc88/NextProcurement/Pipeline/pipeline/pdf2txt/model_section_classificator -l /gpfs/scratch/bsc88/MN4/bsc88/bsc88621/NextProcurement/datantp01067774_Pliego_Prescripciones_tecnicas_URI.pdf -l /gpfs/scratch/bsc88/MN4/bsc88/bsc88621/NextProcurement/datantp01024989_Documento_Publicado_URI:5.pdf 
-
-
-'''
