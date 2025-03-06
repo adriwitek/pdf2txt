@@ -19,6 +19,10 @@ from libs.txt2xml_creator import *
 from libs.lang_indentificator import *
 #from libs.machine_translation.texttokenizer import TextTokenizer
 import translate as tr_model
+import pymupdf  # PyMuPDF
+
+
+
 
 ###################################
 # CONFIGURABLE MACROS 
@@ -117,7 +121,18 @@ def _get_txt_from_pdf_aux(pdf_path, pipe):
     # Return txt
     return ''.join(buffer_txt)
 
-  
+
+def is_pdf_text_based(pdf_path):
+    doc = pymupdf.open(pdf_path)
+    for page in doc:
+        if page.get_text():  # If any page contains text, it's a text PDF
+            return True
+    return False
+
+def extract_pdf_text(pdf_path):
+    doc = pymupdf.open(pdf_path)  # Open the PDF
+    text = "\n".join(page.get_text() for page in doc)  # Extract text from each page
+    return text
 
 
 def get_txt_from_pdf (pdf_path, pipe, save_output_as_txt):
@@ -132,12 +147,15 @@ def get_txt_from_pdf (pdf_path, pipe, save_output_as_txt):
     if filename.endswith(".pdf"): 
         try:
           if(save_output_as_txt):# txt
-            content =  _get_txt_from_pdf_aux_without_marks(pdf_path, pipe)
+            if is_pdf_text_based(pdf_path):
+                # fastpymupdf
+                content = extract_pdf_text(pdf_path)
+            else:
+                # ocrtesseract
+                content =  _get_txt_from_pdf_aux_without_marks(pdf_path, pipe)
           else: # xml
             content =  _get_txt_from_pdf_aux(pdf_path, pipe)
-
           return content
-    
         except Exception as e:
             err_msg = "ERROR: An error ocurred parsing the document: " + filename + '. \n\t' + str(e)
             #raise  Exception( err_msg)
@@ -413,11 +431,12 @@ def main(*args, **kwargs):
     
 
     # Process list of pdfs
-    for list_index, sublist_of_pdfs in enumerate(list_of_lists):
-        _create_parquet_file(sublist_of_pdfs, list_index, pipe, translator, args.output, args.txt)
+    #for list_index, sublist_of_pdfs in enumerate(list_of_lists):
+    #    _create_parquet_file(sublist_of_pdfs, list_index, pipe, translator, args.output, args.txt)
 
 
-
+    cpl_processor = [(list_index, sublist_of_pdfs) for list_index, sublist_of_pdfs in enumerate(list_of_lists)]
+    [ _create_parquet_file(sublist_of_pdfs, list_index, pipe, translator, args.output, args.txt) for list_index, sublist_of_pdfs in cpl_processor ]
 
 
 if __name__ == "__main__":
