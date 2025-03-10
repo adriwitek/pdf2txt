@@ -20,17 +20,17 @@ from libs.lang_indentificator import *
 #from libs.machine_translation.texttokenizer import TextTokenizer
 import translate as tr_model
 import pymupdf  # PyMuPDF
-
+import torch
 
 
 
 ###################################
 # CONFIGURABLE MACROS 
 ###################################
-LIMIT_N_PROCUREMENTS_PER_PARQUET = 100000
 
 
-DEVICE = -1
+#DEVICE = -1
+DEVICE = 0 if torch.cuda.is_available() else -1  # 0 for GPU, -1 for CPU
 
 
 
@@ -123,19 +123,28 @@ def _get_txt_from_pdf_aux(pdf_path, pipe):
 
 
 def is_pdf_text_based(pdf_path):
-    doc = pymupdf.open(pdf_path)
-    for page in doc:
-        if page.get_text():  # If any page contains text, it's a text PDF
-            return True
-    return False
+    try:
+        doc = pymupdf.open(pdf_path)
+        for page in doc:
+            if page.get_text():  # If any page contains text, it's a text PDF
+                return True
+        return False
+    except Exception as e:
+        err = f'Error detecting pdf with pymupdf.\n\t-->File:{pdf_path} \n\tException:{e}'
+        return False
 
 def extract_pdf_text(pdf_path):
-    doc = pymupdf.open(pdf_path)  # Open the PDF
-    text = "\n".join(page.get_text() for page in doc)  # Extract text from each page
-    return text
+    try:
+        doc = pymupdf.open(pdf_path)  # Open the PDF
+        text = "\n".join(page.get_text() for page in doc)  # Extract text from each page
+        return text
+    except Exception as e:
+        err = f'Error processing pdf with pymupdf.\n\t-->File:{pdf_path} \n\tException:{e}'
+        raise err
+        return None
 
 
-def get_txt_from_pdf (pdf_path, pipe, save_output_as_txt):
+def get_txt_from_pdf (pdf_path, pipe, save_output_as_txt,args):
     '''Func that _get_txt_from_pdf_aux()  handles unexpected errors
          so the comprehension list does not fail its execution.
     
@@ -146,16 +155,31 @@ def get_txt_from_pdf (pdf_path, pipe, save_output_as_txt):
     filename = os.fsdecode(pdf_path)
     if filename.endswith(".pdf"): 
         try:
+          content = None
           if(save_output_as_txt):# txt
+
             if is_pdf_text_based(pdf_path):
-                # fastpymupdf
-                content = extract_pdf_text(pdf_path)
+                # Written pdfs
+                if(args.process_only_scanned_pdfs):
+                    pass
+                    print(f'Skipping writen-pdf type since arg process_only_scanned_pdfs was provided: {pdf_path}')
+                else:
+                    # fastpymupdf
+                    content = extract_pdf_text(pdf_path)
             else:
-                # ocrtesseract
-                content =  _get_txt_from_pdf_aux_without_marks(pdf_path, pipe)
+                # Scanned pdfs
+                if(args.process_only_written_pdfs):
+                    pass
+                    print(f'Skipping scanned-pdf type since arg process_only_written_pdfs was provided: {pdf_path}')
+                else:
+                    # ocrtesseract
+                    content =  _get_txt_from_pdf_aux_without_marks(pdf_path, pipe)
+
+
           else: # xml
             content =  _get_txt_from_pdf_aux(pdf_path, pipe)
           return content
+        
         except Exception as e:
             err_msg = "ERROR: An error ocurred parsing the document: " + filename + '. \n\t' + str(e)
             #raise  Exception( err_msg)
@@ -184,7 +208,7 @@ def _extract_proc_ntp_id(pdf_name):
         return None
 
 
-def process_pdf(pdf_path, pipe, translator, save_output_as_txt):
+def process_pdf(pdf_path, pipe, translator, save_output_as_txt,args):
     '''Func that process each pdf and return the desired output'''
 
 
@@ -198,7 +222,7 @@ def process_pdf(pdf_path, pipe, translator, save_output_as_txt):
 
 
     # Txt processing
-    doc_clean_txt = get_txt_from_pdf (pdf_path, pipe, save_output_as_txt) # (txt or "txt to xml marks" depending or argument)
+    doc_clean_txt = get_txt_from_pdf (pdf_path, pipe, save_output_as_txt,args) # (txt or "txt to xml marks" depending or argument)
     if(doc_clean_txt) is None: # Skipping doc
         return
     
@@ -266,7 +290,7 @@ def chunk_list_in_n_slices(l, n):
 
 
 
-def _create_parquet_file(slice_list_of_procurements, list_index, pipe, translator, output_folder, save_output_as_txt):
+def _create_parquet_file(slice_list_of_procurements, list_index, pipe, translator, output_folder, save_output_as_txt,args):
     '''
         list_index: just to keep track of the general slice index
         translator: dict with translator models
@@ -286,7 +310,7 @@ def _create_parquet_file(slice_list_of_procurements, list_index, pipe, translato
 
 
     # Get results of each procuremetn
-    info = [process_pdf(pdt_path, pipe, translator, save_output_as_txt) for pdt_path in slice_list_of_procurements]
+    info = [process_pdf(pdt_path, pipe, translator, save_output_as_txt,args) for pdt_path in slice_list_of_procurements]
  
  
     # Parquet generation
@@ -336,20 +360,26 @@ def _parse_args():
                         default=None,
                         help="Input folder containing pdf documents"
                         )
-    
-
-
-    
     parser.add_argument("-o", 
                         "--output",
                         help="Output path where parquets will be generated."
                         )
-
-
-
     parser.add_argument('--txt',
                         action="store_true",
-                        help='Is passed, content will be saved inside parquet files as plain txt instead of default structured XML format. '
+                        help='If passed, content will be saved inside parquet files as plain txt instead of default structured XML format. '
+                        )
+    parser.add_argument( "--max_docs_per_parquet",
+                        help="Number of max. docs that will be contained in each parquet file (inside the output folder.)",
+                        default=100000,
+                        type=int
+                        )
+    parser.add_argument('--process_only_scanned_pdfs',
+                        action="store_true",
+                        help='If passed, only scanned pdfs (slow ones) will be processed, if not, all of them will be considered. '
+                        )
+    parser.add_argument('--process_only_written_pdfs',
+                        action="store_true",
+                        help='If passed, only pdfs with selectable text (fast ones) will be processed, if not, all of them will be considered. '
                         )
 
 
@@ -368,9 +398,7 @@ def _parse_args():
         err_msg = "ERROR: Provided input is not a directory:{args.input}"
         raise  Exception( err_msg )
 
-    #if(args.output is None ):
-    #    err_msg = "ERROR: --output path must be provided!"
-    #    raise  Exception( err_msg )
+
 
     return args
 
@@ -385,32 +413,35 @@ def main(*args, **kwargs):
 
     
     args = _parse_args()
-     
+    if(args.process_only_scanned_pdfs is True and args.process_only_written_pdfs is True):
+        print('ERROR: You cannot specify both process_only_scanned_pdfs and process_only_written_pdfs arguments.')
 
-     # XML parsing
+
+    # Pre-load user info
+    print(f'INFO: Each parquet file will contain a max. of {args.int(args.max_docs_per_parquet)} pdf processed documents.')
+    ## XML parsing
     if(args.txt):
         print('--> Output content will be plain txt.')
     else:
         print('--> Output content will be plain XML structured data.')
 
 
+
+
     # Classifier: Load model and pipeline
     os.environ["TOKENIZERS_PARALLELISM"] = "false"
     tokenizer = AutoTokenizer.from_pretrained(str(PDF2TXT_CLASSIFIER_MODEL))
     model = AutoModelForSequenceClassification.from_pretrained(str(PDF2TXT_CLASSIFIER_MODEL))
-    #pipe = pipeline("text-classification", model=model, tokenizer=tokenizer)
     pipe = pipeline("text-classification", model=model, tokenizer=tokenizer, device = DEVICE)
 
 
 
     # Tranlation: Load model(s) and pipeline
-
     translator_model = tr_model.init_translator_model()
     tokenizer_cat, spm_cat =  tr_model.init_tokenizers('cat_Latn')
     tokenizer_glg, spm_glg = tr_model.init_tokenizers('glg_Latn')
     tokenizer_eus, spm_eus =  tr_model.init_tokenizers('eus_Latn')
  
-
     translator = {}
     translator['model'] = translator_model
     translator['cat'] = ( tokenizer_cat, spm_cat )
@@ -426,7 +457,8 @@ def main(*args, **kwargs):
     if(len(list_of_pdfs) <1):
         logging.info('No pdf documents fount in provided input! Quitting...')
         return 
-    list_of_lists = chunk_list_in_n_slices(list_of_pdfs, LIMIT_N_PROCUREMENTS_PER_PARQUET)
+    #list_of_lists = chunk_list_in_n_slices(list_of_pdfs, LIMIT_N_PROCUREMENTS_PER_PARQUET)
+    list_of_lists = chunk_list_in_n_slices(list_of_pdfs, int(args.max_docs_per_parquet))
 
     
 
@@ -436,7 +468,7 @@ def main(*args, **kwargs):
 
 
     cpl_processor = [(list_index, sublist_of_pdfs) for list_index, sublist_of_pdfs in enumerate(list_of_lists)]
-    [ _create_parquet_file(sublist_of_pdfs, list_index, pipe, translator, args.output, args.txt) for list_index, sublist_of_pdfs in cpl_processor ]
+    [ _create_parquet_file(sublist_of_pdfs, list_index, pipe, translator, args.output, args.txt,args) for list_index, sublist_of_pdfs in cpl_processor ]
 
 
 if __name__ == "__main__":
