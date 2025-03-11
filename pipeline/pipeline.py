@@ -418,7 +418,7 @@ def main(*args, **kwargs):
 
 
     # Pre-load user info
-    print(f'INFO: Each parquet file will contain a max. of {args.int(args.max_docs_per_parquet)} pdf processed documents.')
+    print(f'INFO: Each parquet file will contain a max. of {int(args.max_docs_per_parquet)} pdf processed documents.')
     ## XML parsing
     if(args.txt):
         print('--> Output content will be plain txt.')
