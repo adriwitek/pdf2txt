@@ -456,6 +456,13 @@ def main(*args, **kwargs):
         translator['glg'] = ( tokenizer_glg, spm_glg )
         translator['eus'] = ( tokenizer_eus, spm_eus )
 
+    else:           
+        translator = {}
+        translator['model'] = None
+        translator['cat'] = None
+        translator['glg'] = None
+        translator['eus'] = None
+
 
 
 
