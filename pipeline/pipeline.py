@@ -236,29 +236,31 @@ def process_pdf(pdf_path, pipe, translator, save_output_as_txt,args):
         original_content = process_doc(doc_clean_txt)
 
 
+    if(args.dont_translate_docs):
+        # do not translate
+        translated_content = ''
+    else:
+        # Translate content
+        translated_content = ''
+        try:
+            if (not 'es' in lang):
+                translator_model = translator['model']
+                if('ca' in lang):
+                    tokenizer, spm = translator['cat']
+                elif('gl' in lang):
+                    tokenizer, spm = translator['glg']
+                elif('eu' in lang):
+                    tokenizer, spm = translator['eus']
 
-    # Translate content
-    translated_content = ''
-    try:
-        if (not 'es' in lang):
-            translator_model = translator['model']
-            if('ca' in lang):
-                tokenizer, spm = translator['cat']
-            elif('gl' in lang):
-                tokenizer, spm = translator['glg']
-            elif('eu' in lang):
-                tokenizer, spm = translator['eus']
+                equivalent_lang_code = _lang_code_translator_2(lang)
 
-            equivalent_lang_code = _lang_code_translator_2(lang)
+                if(save_output_as_txt):#txt
+                    translated_content = tr_model.translate(doc_clean_txt, tokenizer, spm, translator_model)
+                else:#xml
+                    translated_content = tr_model.translate_document(original_content, equivalent_lang_code, tokenizer,spm, translator_model)
+        except Exception as e:
+            print(f'Translation could not be done: Exception:\n {e}')
 
-            if(save_output_as_txt):#txt
-                translated_content = tr_model.translate(doc_clean_txt, tokenizer, spm, translator_model)
-            else:#xml
-                translated_content = tr_model.translate_document(original_content, equivalent_lang_code, tokenizer,spm, translator_model)
-
-
-    except Exception as e:
-        print(f'Translation could not be done: Exception:\n {e}')
 
 
 
@@ -381,6 +383,10 @@ def _parse_args():
                         action="store_true",
                         help='If passed, only pdfs with selectable text (fast ones) will be processed, if not, all of them will be considered. '
                         )
+    parser.add_argument('--dont_translate_docs',
+                        action="store_true",
+                        help='If passed, documents wont be translated.'
+                        )
 
 
     if len(sys.argv)==1:
@@ -437,16 +443,18 @@ def main(*args, **kwargs):
 
 
     # Tranlation: Load model(s) and pipeline
-    translator_model = tr_model.init_translator_model()
-    tokenizer_cat, spm_cat =  tr_model.init_tokenizers('cat_Latn')
-    tokenizer_glg, spm_glg = tr_model.init_tokenizers('glg_Latn')
-    tokenizer_eus, spm_eus =  tr_model.init_tokenizers('eus_Latn')
+    if(not args.dont_translate_docs):
+        # Do not load models if they are not going to be translated
+        translator_model = tr_model.init_translator_model()
+        tokenizer_cat, spm_cat =  tr_model.init_tokenizers('cat_Latn')
+        tokenizer_glg, spm_glg = tr_model.init_tokenizers('glg_Latn')
+        tokenizer_eus, spm_eus =  tr_model.init_tokenizers('eus_Latn')
  
-    translator = {}
-    translator['model'] = translator_model
-    translator['cat'] = ( tokenizer_cat, spm_cat )
-    translator['glg'] = ( tokenizer_glg, spm_glg )
-    translator['eus'] = ( tokenizer_eus, spm_eus )
+        translator = {}
+        translator['model'] = translator_model
+        translator['cat'] = ( tokenizer_cat, spm_cat )
+        translator['glg'] = ( tokenizer_glg, spm_glg )
+        translator['eus'] = ( tokenizer_eus, spm_eus )
 
 
 
