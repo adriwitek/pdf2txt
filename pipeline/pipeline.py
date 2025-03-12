@@ -144,7 +144,7 @@ def extract_pdf_text(pdf_path):
         return None
 
 
-def get_txt_from_pdf (pdf_path, pipe, save_output_as_txt,args):
+def get_txt_from_pdf(pdf_path, pipe, save_output_as_txt,args):
     '''Func that _get_txt_from_pdf_aux()  handles unexpected errors
          so the comprehension list does not fail its execution.
     
@@ -222,9 +222,9 @@ def process_pdf(pdf_path, pipe, translator, save_output_as_txt,args):
 
 
     # Txt processing
-    doc_clean_txt = get_txt_from_pdf (pdf_path, pipe, save_output_as_txt,args) # (txt or "txt to xml marks" depending or argument)
+    doc_clean_txt = get_txt_from_pdf(pdf_path, pipe, save_output_as_txt,args) # (txt or "txt to xml marks" depending or argument)
     if(doc_clean_txt) is None: # Skipping doc
-        return
+        return None
     
     # Lang detection
     lang = get_language(doc_clean_txt)
@@ -312,35 +312,41 @@ def _create_parquet_file(slice_list_of_procurements, list_index, pipe, translato
 
 
     # Get results of each procuremetn
-    info = [process_pdf(pdt_path, pipe, translator, save_output_as_txt,args) for pdt_path in slice_list_of_procurements]
+    #info = [process_pdf(pdt_path, pipe, translator, save_output_as_txt,args) for pdt_path in slice_list_of_procurements]
+    info = [result for pdt_path in slice_list_of_procurements if (result := process_pdf(pdt_path, pipe, translator, save_output_as_txt, args)) is not None]
+
+    
+    if len(info) == 0:
+        logging.info(f'Quality check. Avoiding to write empy parquet chunck...')
+        return 
+    else:
  
- 
-    # Parquet generation
-    df_content = [ {'procurement_id': ntp_id, 
-                    'original_doc_name': original_pdf_name, 
-                    'content': doc_xml_txt ,
-                    'lang': lang ,
-                    'translated_content': tranlated_doc_xml_txt,
-                    } for (ntp_id, original_pdf_name , doc_xml_txt , lang, tranlated_doc_xml_txt) in  info 
-                ]
-    df = pd.DataFrame(df_content)
-    n_of_docs_in_slice = df.shape[0]
-
-
-
-    # Writing parquet
-    os.makedirs(output_folder,exist_ok = True)
-    output_file_name = f'procurements_file_{list_index}_containing_{n_of_docs_in_slice}_docs.parq'
-    output_path = os.path.join(output_folder,output_file_name)
-    logging.info(f'Creating parquet with index {list_index} as file named as:{output_path} ...')
-
-    #write(PARQUET_OUTPUT_PATH, df) # C MEMORY ERROR
-    df.to_parquet(  output_path, 
-                    #engine='fastparquet', 
-                    engine='pyarrow', 
-                    compression='lz4'
-                  )
-    logging.info(f'File Saved!')
+        # Parquet generation
+        df_content = [ {'procurement_id': ntp_id, 
+                        'original_doc_name': original_pdf_name, 
+                        'content': doc_xml_txt ,
+                        'lang': lang ,
+                        'translated_content': tranlated_doc_xml_txt,
+                        } for (ntp_id, original_pdf_name , doc_xml_txt , lang, tranlated_doc_xml_txt) in  info 
+                    ]
+        df = pd.DataFrame(df_content)
+        n_of_docs_in_slice = df.shape[0]
+    
+    
+    
+        # Writing parquet
+        os.makedirs(output_folder,exist_ok = True)
+        output_file_name = f'procurements_file_{list_index}_containing_{n_of_docs_in_slice}_docs.parq'
+        output_path = os.path.join(output_folder,output_file_name)
+        logging.info(f'Creating parquet with index {list_index} as file named as:{output_path} ...')
+    
+        #write(PARQUET_OUTPUT_PATH, df) # C MEMORY ERROR
+        df.to_parquet(  output_path, 
+                        #engine='fastparquet', 
+                        engine='pyarrow', 
+                        compression='lz4'
+                      )
+        logging.info(f'File Saved!')
 
  
 
