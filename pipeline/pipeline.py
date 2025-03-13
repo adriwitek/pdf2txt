@@ -223,7 +223,7 @@ def process_pdf(pdf_path, pipe, translator, save_output_as_txt,args, pfds_names_
     if( (args.exclude_this_docs is not None) and  (len(pfds_names_to_exclude) > 0)  ):
         # Check if pdf processing will be skipped
         if(original_pdf_name in pfds_names_to_exclude):
-            logging.info(f'\t\t--> Skipping pdf documente as demanded by argument option. PDF filename: {original_pdf_name}')
+            logging.info(f'--> Skipping pdf document as demanded by argument option. PDF filename: {original_pdf_name}')
             return None
 
 
@@ -360,9 +360,10 @@ def _create_parquet_file(slice_list_of_procurements, list_index, pipe, translato
 def read_txt_with_list_of_pdfs(path):
     list_excluded_pdfs = []
     try:
+        logging.debug(f'Reading excluding pdf list in the txt file:{path} ...')
         with open(path, 'r') as file:
-            #list_excluded_pdfs = [line.strip() for line in file if  line.endswith('.pdf')]
-            list_excluded_pdfs = [line.strip().split['/'][-1] for line in file if  line.endswith('.pdf')] #pdfnames
+            list_excluded_pdfs = [line.strip().split('/')[-1] for line in file if  line.strip().endswith('.pdf')] #pdfnames
+        logging.debug(f'Done!')
 
     except Exception as e:
         msg = f'Error, ther was an error parsing the path: {path}. Err:{e}'
