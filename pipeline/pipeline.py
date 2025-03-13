@@ -44,8 +44,8 @@ PDF2TXT_CLASSIFIER_MODEL = '/app/pdf2txt/pipeline/models/nextprocurement_pdfutil
 MAX_TOKENIZER_LENGTH=512
 
 
-NTP_PATTERN = r"ntp\d+_.*\.pdf"
-
+#NTP_PATTERN = r"ntp\d+_.*\.pdf"
+NTP_PATTERN = r"PL\d+_.*\.pdf"
 
 
 
@@ -88,7 +88,7 @@ def list_dir(directory):
 
 
 
-def _get_txt_from_pdf_aux_without_marks(pdf_path, pipe):
+def _get_txt_from_pdf_aux_without_marks(pdf_path):
     '''Processes and saves each pdf file'''
 
     all_paragraphs = get_paragraphs_from_pdf(os.path.join(pdf_path))
@@ -173,7 +173,9 @@ def get_txt_from_pdf(pdf_path, pipe, save_output_as_txt,args):
                     print(f'Skipping scanned-pdf type since arg process_only_written_pdfs was provided: {pdf_path}')
                 else:
                     # ocrtesseract
-                    content =  _get_txt_from_pdf_aux_without_marks(pdf_path, pipe)
+                    #content =  _get_txt_from_pdf_aux_without_marks(pdf_path, pipe)
+                    content =  _get_txt_from_pdf_aux_without_marks(pdf_path)
+
 
 
           else: # xml
@@ -208,7 +210,7 @@ def _extract_proc_ntp_id(pdf_name):
         return None
 
 
-def process_pdf(pdf_path, pipe, translator, save_output_as_txt,args):
+def process_pdf(pdf_path, pipe, translator, save_output_as_txt,args, pfds_names_to_exclude = []):
     '''Func that process each pdf and return the desired output'''
 
 
@@ -216,9 +218,17 @@ def process_pdf(pdf_path, pipe, translator, save_output_as_txt,args):
    # Pdf basename
     original_pdf_name = os.path.basename(pdf_path)
 
+
+    # Skipping already processed option
+    if( (args.exclude_this_docs is not None) and  (len(pfds_names_to_exclude) > 0)  ):
+        # Check if pdf processing will be skipped
+        if(original_pdf_name in pfds_names_to_exclude):
+            logging.info(f'\t\t--> Skipping pdf documente as demanded by argument option. PDF filename: {original_pdf_name}')
+            return None
+
+
     # Proc ID  (if can be located)
     ntp_id = _extract_proc_ntp_id(original_pdf_name)
-
 
 
     # Txt processing
@@ -263,12 +273,7 @@ def process_pdf(pdf_path, pipe, translator, save_output_as_txt,args):
 
 
 
-
-
-
     return (ntp_id, original_pdf_name , original_content , lang, translated_content)
-
-
 
 
 
@@ -292,7 +297,7 @@ def chunk_list_in_n_slices(l, n):
 
 
 
-def _create_parquet_file(slice_list_of_procurements, list_index, pipe, translator, output_folder, save_output_as_txt,args):
+def _create_parquet_file(slice_list_of_procurements, list_index, pipe, translator, output_folder, save_output_as_txt,args, pfds_names_to_exclude = []):
     '''
         list_index: just to keep track of the general slice index
         translator: dict with translator models
@@ -313,14 +318,13 @@ def _create_parquet_file(slice_list_of_procurements, list_index, pipe, translato
 
     # Get results of each procuremetn
     #info = [process_pdf(pdt_path, pipe, translator, save_output_as_txt,args) for pdt_path in slice_list_of_procurements]
-    info = [result for pdt_path in slice_list_of_procurements if (result := process_pdf(pdt_path, pipe, translator, save_output_as_txt, args)) is not None]
+    info = [result for pdt_path in slice_list_of_procurements if (result := process_pdf(pdt_path, pipe, translator, save_output_as_txt, args, pfds_names_to_exclude)) is not None]
 
     
     if len(info) == 0:
         logging.info(f'Quality check. Avoiding to write empy parquet chunck...')
         return 
     else:
- 
         # Parquet generation
         df_content = [ {'procurement_id': ntp_id, 
                         'original_doc_name': original_pdf_name, 
@@ -353,14 +357,27 @@ def _create_parquet_file(slice_list_of_procurements, list_index, pipe, translato
 
 
 
+def read_txt_with_list_of_pdfs(path):
+    list_excluded_pdfs = []
+    try:
+        with open(path, 'r') as file:
+            #list_excluded_pdfs = [line.strip() for line in file if  line.endswith('.pdf')]
+            list_excluded_pdfs = [line.strip().split['/'][-1] for line in file if  line.endswith('.pdf')] #pdfnames
+
+    except Exception as e:
+        msg = f'Error, ther was an error parsing the path: {path}. Err:{e}'
+        return list_excluded_pdfs
+
+    return list_excluded_pdfs
+
+
+
 
 def _parse_args():
-
 
     parser = argparse.ArgumentParser(prog=os.path.basename(sys.argv[0]),
                                      formatter_class=argparse.RawDescriptionHelpFormatter,
                                      description=__doc__)
-
 
 
     parser.add_argument("-i", 
@@ -393,7 +410,20 @@ def _parse_args():
                         action="store_true",
                         help='If passed, documents wont be translated.'
                         )
-
+    
+    parser.add_argument('--exclude_this_docs',
+                        required=False,
+                        type=str,
+                        default=None,
+                        help='List to a txt file. Each line will contain a path to a pdf doc. This list of files will be skipped. (Useful when they are alredy processed) Comparison criteria will be the pdf filename.'
+                        )
+    
+    parser.add_argument('-v',
+                        '--verbose',
+                        action="store_true",
+                        help='If passed, showing additional processing information.'
+                        )
+    
 
     if len(sys.argv)==1:
         parser.print_help(sys.stderr)
@@ -425,8 +455,14 @@ def main(*args, **kwargs):
 
     
     args = _parse_args()
+
+    if(args.verbose):
+        logging.getLogger().setLevel(logging.DEBUG)
+
     if(args.process_only_scanned_pdfs is True and args.process_only_written_pdfs is True):
         print('ERROR: You cannot specify both process_only_scanned_pdfs and process_only_written_pdfs arguments.')
+
+
 
 
     # Pre-load user info
@@ -440,11 +476,16 @@ def main(*args, **kwargs):
 
 
 
-    # Classifier: Load model and pipeline
-    os.environ["TOKENIZERS_PARALLELISM"] = "false"
-    tokenizer = AutoTokenizer.from_pretrained(str(PDF2TXT_CLASSIFIER_MODEL))
-    model = AutoModelForSequenceClassification.from_pretrained(str(PDF2TXT_CLASSIFIER_MODEL))
-    pipe = pipeline("text-classification", model=model, tokenizer=tokenizer, device = DEVICE)
+    # Classifier: Loading model and pipeline
+    if(args.txt):
+        pipe = None
+    else: 
+        # This is only needed to tag xml sections.
+        os.environ["TOKENIZERS_PARALLELISM"] = "false"
+        tokenizer = AutoTokenizer.from_pretrained(str(PDF2TXT_CLASSIFIER_MODEL))
+        model = AutoModelForSequenceClassification.from_pretrained(str(PDF2TXT_CLASSIFIER_MODEL))
+        pipe = pipeline("text-classification", model=model, tokenizer=tokenizer, device = DEVICE)
+
 
 
 
@@ -478,10 +519,20 @@ def main(*args, **kwargs):
     if(len(list_of_pdfs) <1):
         logging.info('No pdf documents fount in provided input! Quitting...')
         return 
-    #list_of_lists = chunk_list_in_n_slices(list_of_pdfs, LIMIT_N_PROCUREMENTS_PER_PARQUET)
     list_of_lists = chunk_list_in_n_slices(list_of_pdfs, int(args.max_docs_per_parquet))
 
-    
+
+    if(args.exclude_this_docs is not None):
+        logging.info(f'Reading list of files to skip ...')
+        pfds_names_to_exclude= read_txt_with_list_of_pdfs(args.exclude_this_docs)
+        logging.debug(f'The following pdf names will be skipped if found:\n{pfds_names_to_exclude}')
+        logging.info(f'Done!')
+        #logging.info(f'Filtering out list of pdfs to be processed...')
+        #filenames_pfds_to_exclude = [pdfpath.split['/'][-1]  for pdfpath in pfds_to_exclude]
+        #list_of_pdfs = []
+        #logging.info(f'Done!')
+
+
 
     # Process list of pdfs
     #for list_index, sublist_of_pdfs in enumerate(list_of_lists):
@@ -489,7 +540,13 @@ def main(*args, **kwargs):
 
 
     cpl_processor = [(list_index, sublist_of_pdfs) for list_index, sublist_of_pdfs in enumerate(list_of_lists)]
-    [ _create_parquet_file(sublist_of_pdfs, list_index, pipe, translator, args.output, args.txt,args) for list_index, sublist_of_pdfs in cpl_processor ]
+    if(args.exclude_this_docs is None):
+        [ _create_parquet_file(sublist_of_pdfs, list_index, pipe, translator, args.output, args.txt,args) for list_index, sublist_of_pdfs in cpl_processor ]
+    else:
+        [ _create_parquet_file(sublist_of_pdfs, list_index, pipe, translator, args.output, args.txt,args, pfds_names_to_exclude) for list_index, sublist_of_pdfs in cpl_processor ]
+
+
+
 
 
 if __name__ == "__main__":
