@@ -94,31 +94,28 @@ def process_parquet_file(parquet_file, output_folder, translator):
 
     # Iterating
     logging.debug(f'Performing translation of the parquet....')
-
     if(lang_code_included):
-        for index, row in df.iterrows():
+        for index in df.index:
             logging.debug(f'Translating doc. with index {index}')
-            lang =  row['lang'].decode("utf-8")
-            doc_text =  row['content'].decode("utf-8")
+            lang = df.loc[index, 'lang']
+            doc_text =  df.loc[index, 'content']
             txt_translated =  translate_doc(doc_text,lang, translator)
-            txt_translated_in_bytes =  bytes(txt_translated, 'utf-8')
-            row['translated_content'] = txt_translated_in_bytes
-            logging.debug(f'Translated doc. with index {index}')
+            df.at[index, 'translated_content'] = txt_translated
     else:
         # not language code already detected
-        for index, row in df.iterrows():
+        for index in df.index:
             logging.debug(f'Translating doc. with index {index}')
-            doc_text =  row['content'].decode("utf-8")
+            doc_text =  df.loc[index, 'content']
             lang = get_language(doc_text)
             txt_translated =  translate_doc(doc_text,lang,translator)
-            txt_translated_in_bytes =  bytes(txt_translated, 'utf-8')
-            row['translated_content'] = txt_translated_in_bytes
-    logging.debug(f'Translation task over the entire parquet filex executed!')
+            df.at[index, 'translated_content'] = txt_translated
+
+    logging.debug(f'Translation task over the entire parquet file executed!')
 
 
     # Rewriting
     logging.debug(f'Saving to disk...')
-    parquet_filename = os.basename(parquet_file)
+    parquet_filename = os.path.basename(parquet_file)
     final_name = str(parquet_filename).replace('.parq', '_with_translations.parq')
     final_path= os.path.join(output_folder, final_name)
     df.to_parquet(  final_path, 
@@ -126,7 +123,7 @@ def process_parquet_file(parquet_file, output_folder, translator):
                     engine='pyarrow', 
                     compression='lz4'
                   )
-    logging.debug(f'File {final_path} fixed and saved!')
+    logging.debug(f'File {final_path} saved!')
 
 
     # Stats Update
