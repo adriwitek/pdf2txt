@@ -4,7 +4,7 @@ import fasttext
 import sys
 
 
-FASTTEXT_MODEL_PATH = '/gpfs/projects/bsc88/NextProcurement/Pipeline/pipeline/pdf2txt/translator_2/fast_text_model_binary/lid.176.bin'
+FASTTEXT_MODEL_PATH = '/app/pdf2txt/pipeline/models/language_identification/lid.176.bin'
 
 
 
