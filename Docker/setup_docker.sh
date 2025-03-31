@@ -56,20 +56,28 @@ git clone --depth 1 https://huggingface.co/BSC-LT/NextProcurement_pdfutils /app/
 
 
 # MT Model downloading
-mkdir /app/pdf2txt/pipeline/models/nllb
-cd /app/pdf2txt/pipeline/models/nllb
-GIT_LFS_SKIP_SMUDGE=1 git clone https://huggingface.co/facebook/nllb-200-distilled-600M
+#mkdir /app/pdf2txt/pipeline/models/nllb
+#cd /app/pdf2txt/pipeline/models/nllb
+#GIT_LFS_SKIP_SMUDGE=1 git clone https://huggingface.co/facebook/nllb-200-distilled-600M
+#
+#cd /app/pdf2txt/pipeline/models/nllb/nllb-200-distilled-600M
+#wget https://huggingface.co/facebook/nllb-200-distilled-600M/resolve/main/tokenizer.json?download=true -O tokenizer.json
+#wget https://huggingface.co/facebook/nllb-200-distilled-600M/resolve/main/sentencepiece.bpe.model?download=true -O sentencepiece.bpe.model
+#wget https://huggingface.co/facebook/nllb-200-distilled-600M/resolve/main/pytorch_model.bin?download=true  -O pytorch_model.bin
+#
+##Convert model to ct2 format
+#cd /app/pdf2txt/pipeline/models/nllb/
+#ct2-transformers-converter --model nllb-200-distilled-600M --output_dir nllb-ct2
 
-cd /app/pdf2txt/pipeline/models/nllb/nllb-200-distilled-600M
-wget https://huggingface.co/facebook/nllb-200-distilled-600M/resolve/main/tokenizer.json?download=true -O tokenizer.json
-wget https://huggingface.co/facebook/nllb-200-distilled-600M/resolve/main/sentencepiece.bpe.model?download=true -O sentencepiece.bpe.model
-wget https://huggingface.co/facebook/nllb-200-distilled-600M/resolve/main/pytorch_model.bin?download=true  -O pytorch_model.bin
-
-#Convert model to ct2 format
-cd /app/pdf2txt/pipeline/models/nllb/
-ct2-transformers-converter --model nllb-200-distilled-600M --output_dir nllb-ct2
 
 
+
+# MT Model Downloading - SA-TA
+mkdir /app/pdf2txt/pipeline/models/salamandra_engine
+cd /app/pdf2txt/pipeline/models/salamandra_engine
+GIT_LFS_SKIP_SMUDGE=1 git clone https://huggingface.co/BSC-LT/salamandraTA-2B
+cd /app/pdf2txt/pipeline/models/salamandra_engine/salamandraTA-2B
+wget https://huggingface.co/mradermacher/salamandraTA-2B-GGUF/resolve/main/salamandraTA-2B.Q2_K.gguf -O salamandraTA-2B.Q2_K.gguf
 
 
 # Lang identification Model downloading

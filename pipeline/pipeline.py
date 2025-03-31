@@ -18,8 +18,9 @@ from libs.pdf_to_text import *
 from libs.txt2xml_creator import *
 from libs.lang_indentificator import *
 #from libs.machine_translation.texttokenizer import TextTokenizer
-import translate as tr_model
-import pymupdf  # PyMuPDF
+#import translate as tr_model
+import translator.translator as tr_model
+import pymupdf  # PyMuPDFv
 import torch
 
 
@@ -42,7 +43,8 @@ DEVICE = 0 if torch.cuda.is_available() else -1  # 0 for GPU, -1 for CPU
 #PDF2TXT_CLASSIFIER_MODEL = 'https://huggingface.co/BSC-LT/NextProcurement_pdfutils'
 PDF2TXT_CLASSIFIER_MODEL = '/app/pdf2txt/pipeline/models/nextprocurement_pdfutils'
 MAX_TOKENIZER_LENGTH=512
-
+MT_TRANSLATOR_PATH='/app/pdf2txt/pipeline/models/salamandra_engine/salamandraTA-2B'
+MT_TRANSLATOR_PATH_GGUF = 'salamandraTA-2B.Q2_K.gguf'
 
 #NTP_PATTERN = r"ntp\d+_.*\.pdf"
 NTP_PATTERN = r"PL\d+_.*\.pdf"
@@ -253,21 +255,9 @@ def process_pdf(pdf_path, pipe, translator, save_output_as_txt,args, pfds_names_
         # Translate content
         translated_content = ''
         try:
-            if (not 'es' in lang):
-                translator_model = translator['model']
-                if('ca' in lang):
-                    tokenizer, spm = translator['cat']
-                elif('gl' in lang):
-                    tokenizer, spm = translator['glg']
-                elif('eu' in lang):
-                    tokenizer, spm = translator['eus']
-
-                equivalent_lang_code = _lang_code_translator_2(lang)
-
-                if(save_output_as_txt):#txt
-                    translated_content = tr_model.translate(doc_clean_txt, tokenizer, spm, translator_model)
-                else:#xml
-                    translated_content = tr_model.translate_document(original_content, equivalent_lang_code, tokenizer,spm, translator_model)
+            model = translator['model']       
+            tokenizer = translator['tokenizer']
+            translated_content = tr_model.translate_doc(original_pdf_name,lang, doc_clean_txt,  tokenizer, model)
         except Exception as e:
             print(f'Translation could not be done: Exception:\n {e}')
 
@@ -493,25 +483,16 @@ def main(*args, **kwargs):
     # Tranlation: Load model(s) and pipeline
     if(not args.dont_translate_docs):
         # Do not load models if they are not going to be translated
-        translator_model = tr_model.init_translator_model()
-        tokenizer_cat, spm_cat =  tr_model.init_tokenizers('cat_Latn')
-        tokenizer_glg, spm_glg = tr_model.init_tokenizers('glg_Latn')
-        tokenizer_eus, spm_eus =  tr_model.init_tokenizers('eus_Latn')
- 
+        translator_model,tokenizer = tr_model.init_models(  model_id = MT_TRANSLATOR_PATH,
+                                                            gguf_model_name = MT_TRANSLATOR_PATH_GGUF ,
+        )
         translator = {}
         translator['model'] = translator_model
-        translator['cat'] = ( tokenizer_cat, spm_cat )
-        translator['glg'] = ( tokenizer_glg, spm_glg )
-        translator['eus'] = ( tokenizer_eus, spm_eus )
-
+        translator['tokenizer'] = tokenizer
     else:           
         translator = {}
         translator['model'] = None
-        translator['cat'] = None
-        translator['glg'] = None
-        translator['eus'] = None
-
-
+        translator['tokenizer'] = None
 
 
 
@@ -528,16 +509,10 @@ def main(*args, **kwargs):
         pfds_names_to_exclude= read_txt_with_list_of_pdfs(args.exclude_this_docs)
         logging.debug(f'The following pdf names will be skipped if found:\n{pfds_names_to_exclude}')
         logging.info(f'Done!')
-        #logging.info(f'Filtering out list of pdfs to be processed...')
-        #filenames_pfds_to_exclude = [pdfpath.split['/'][-1]  for pdfpath in pfds_to_exclude]
-        #list_of_pdfs = []
-        #logging.info(f'Done!')
 
 
 
-    # Process list of pdfs
-    #for list_index, sublist_of_pdfs in enumerate(list_of_lists):
-    #    _create_parquet_file(sublist_of_pdfs, list_index, pipe, translator, args.output, args.txt)
+
 
 
     cpl_processor = [(list_index, sublist_of_pdfs) for list_index, sublist_of_pdfs in enumerate(list_of_lists)]
